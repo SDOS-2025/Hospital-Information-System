@@ -1,0 +1,14 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2>Exam Schedule Notification</h2>
+  <p>Dear {{name}},</p>
+  <p>This is to inform you about the upcoming exam:</p>
+  <p><strong>Exam:</strong> {{examTitle}}</p>
+  <p><strong>Date & Time:</strong> {{dateTime}}</p>
+  <p><strong>Venue:</strong> {{venue}}</p>
+  {{#if instructions}}
+  <h3>Important Instructions:</h3>
+  <p>{{instructions}}</p>
+  {{/if}}
+  <p>Please ensure you arrive at least 30 minutes before the scheduled time.</p>
+  <p>Best regards,<br>Hindu Rao Hospital Administration</p>
+</div>
