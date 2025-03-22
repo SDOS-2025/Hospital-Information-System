@@ -2,9 +2,53 @@ import { Router } from 'express';
 import { GrievanceController } from '../controllers/grievance.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { UserRole } from '../types/auth.types';
+import { AuditResource } from '../models/AuditLog';
+import { createAuditedRouter } from '../utils/audit-routes.util';
+import { RequestHandler } from 'express';
 
 const grievanceController = new GrievanceController();
-const router = Router();
+const router = createAuditedRouter(AuditResource.GRIEVANCE);
+
+// Convert controller methods to RequestHandler type with proper async handling
+const submitGrievance: RequestHandler = async (req, res, next) => {
+  await grievanceController.submitGrievance(req, res);
+};
+
+const uploadAttachments: RequestHandler = async (req, res, next) => {
+  await grievanceController.uploadAttachments(req, res);
+};
+
+const getAllGrievances: RequestHandler = async (req, res, next) => {
+  await grievanceController.getAllGrievances(req, res);
+};
+
+const getMyGrievances: RequestHandler = async (req, res, next) => {
+  await grievanceController.getMyGrievances(req, res);
+};
+
+const getAssignedGrievances: RequestHandler = async (req, res, next) => {
+  await grievanceController.getAssignedGrievances(req, res);
+};
+
+const getGrievanceById: RequestHandler = async (req, res, next) => {
+  await grievanceController.getGrievanceById(req, res);
+};
+
+const updateGrievance: RequestHandler = async (req, res, next) => {
+  await grievanceController.updateGrievance(req, res);
+};
+
+const updateStatus: RequestHandler = async (req, res, next) => {
+  await grievanceController.updateStatus(req, res);
+};
+
+const addResolution: RequestHandler = async (req, res, next) => {
+  await grievanceController.addResolution(req, res);
+};
+
+const deleteGrievance: RequestHandler = async (req, res, next) => {
+  await grievanceController.deleteGrievance(req, res);
+};
 
 /**
  * @route   POST /api/v1/grievances
@@ -14,7 +58,7 @@ const router = Router();
 router.post(
   '/',
   authenticate,
-  grievanceController.submitGrievance
+  submitGrievance
 );
 
 /**
@@ -25,7 +69,7 @@ router.post(
 router.post(
   '/:id/attachments',
   authenticate,
-  grievanceController.uploadAttachments
+  uploadAttachments
 );
 
 /**
@@ -37,7 +81,7 @@ router.get(
   '/',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.STAFF),
-  grievanceController.getAllGrievances
+  getAllGrievances
 );
 
 /**
@@ -48,7 +92,7 @@ router.get(
 router.get(
   '/my',
   authenticate,
-  grievanceController.getMyGrievances
+  getMyGrievances
 );
 
 /**
@@ -60,7 +104,7 @@ router.get(
   '/assigned',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.STAFF),
-  grievanceController.getAssignedGrievances
+  getAssignedGrievances
 );
 
 /**
@@ -71,7 +115,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  grievanceController.getGrievanceById
+  getGrievanceById
 );
 
 /**
@@ -82,7 +126,7 @@ router.get(
 router.put(
   '/:id',
   authenticate,
-  grievanceController.updateGrievance
+  updateGrievance
 );
 
 /**
@@ -94,7 +138,7 @@ router.patch(
   '/:id/status',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.STAFF),
-  grievanceController.updateStatus
+  updateStatus
 );
 
 /**
@@ -106,7 +150,7 @@ router.post(
   '/:id/resolution',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.STAFF),
-  grievanceController.addResolution
+  addResolution
 );
 
 /**
@@ -117,7 +161,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  grievanceController.deleteGrievance
+  deleteGrievance
 );
 
 export default router;

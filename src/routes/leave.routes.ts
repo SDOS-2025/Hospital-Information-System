@@ -2,9 +2,45 @@ import { Router } from 'express';
 import { LeaveController } from '../controllers/leave.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { UserRole } from '../types/auth.types';
+import { AuditResource } from '../models/AuditLog';
+import { createAuditedRouter } from '../utils/audit-routes.util';
+import { RequestHandler } from 'express';
 
 const leaveController = new LeaveController();
-const router = Router();
+const router = createAuditedRouter(AuditResource.LEAVE);
+
+// Convert controller methods to RequestHandler type with proper async handling
+const applyLeave: RequestHandler = async (req, res, next) => {
+  await leaveController.applyLeave(req, res);
+};
+
+const uploadDocuments: RequestHandler = async (req, res, next) => {
+  await leaveController.uploadDocuments(req, res);
+};
+
+const getAllLeaves: RequestHandler = async (req, res, next) => {
+  await leaveController.getAllLeaves(req, res);
+};
+
+const getMyLeaves: RequestHandler = async (req, res, next) => {
+  await leaveController.getMyLeaves(req, res);
+};
+
+const getLeaveById: RequestHandler = async (req, res, next) => {
+  await leaveController.getLeaveById(req, res);
+};
+
+const updateLeaveStatus: RequestHandler = async (req, res, next) => {
+  await leaveController.updateLeaveStatus(req, res);
+};
+
+const cancelLeave: RequestHandler = async (req, res, next) => {
+  await leaveController.cancelLeave(req, res);
+};
+
+const getLeaveStatistics: RequestHandler = async (req, res, next) => {
+  await leaveController.getLeaveStatistics(req, res);
+};
 
 /**
  * @route   POST /api/v1/leaves
@@ -14,7 +50,7 @@ const router = Router();
 router.post(
   '/',
   authenticate,
-  leaveController.applyLeave
+  applyLeave
 );
 
 /**
@@ -25,7 +61,7 @@ router.post(
 router.post(
   '/:id/documents',
   authenticate,
-  leaveController.uploadDocuments
+  uploadDocuments
 );
 
 /**
@@ -37,7 +73,7 @@ router.get(
   '/',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.FACULTY),
-  leaveController.getAllLeaves
+  getAllLeaves
 );
 
 /**
@@ -48,7 +84,7 @@ router.get(
 router.get(
   '/my',
   authenticate,
-  leaveController.getMyLeaves
+  getMyLeaves
 );
 
 /**
@@ -59,7 +95,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  leaveController.getLeaveById
+  getLeaveById
 );
 
 /**
@@ -71,7 +107,7 @@ router.patch(
   '/:id/status',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.FACULTY),
-  leaveController.updateLeaveStatus
+  updateLeaveStatus
 );
 
 /**
@@ -82,7 +118,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  leaveController.cancelLeave
+  cancelLeave
 );
 
 /**
@@ -93,7 +129,7 @@ router.delete(
 router.get(
   '/statistics',
   authenticate,
-  leaveController.getLeaveStatistics
+  getLeaveStatistics
 );
 
 export default router;

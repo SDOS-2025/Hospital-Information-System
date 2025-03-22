@@ -2,9 +2,41 @@ import { Router } from 'express';
 import { StudentController } from '../controllers/student.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { UserRole } from '../types/auth.types';
+import { AuditResource } from '../models/AuditLog';
+import { createAuditedRouter } from '../utils/audit-routes.util';
+import { RequestHandler } from 'express';
 
 const studentController = new StudentController();
-const router = Router();
+const router = createAuditedRouter(AuditResource.STUDENT);
+
+// Convert controller methods to RequestHandler type with proper async handling
+const registerStudent: RequestHandler = async (req, res, next) => {
+  await studentController.registerStudent(req, res);
+};
+
+const getAllStudents: RequestHandler = async (req, res, next) => {
+  await studentController.getAllStudents(req, res);
+};
+
+const getMyProfile: RequestHandler = async (req, res, next) => {
+  await studentController.getMyProfile(req, res);
+};
+
+const getStudentById: RequestHandler = async (req, res, next) => {
+  await studentController.getStudentById(req, res);
+};
+
+const getStudentByRegistrationNumber: RequestHandler = async (req, res, next) => {
+  await studentController.getStudentByRegistrationNumber(req, res);
+};
+
+const updateStudent: RequestHandler = async (req, res, next) => {
+  await studentController.updateStudent(req, res);
+};
+
+const deleteStudent: RequestHandler = async (req, res, next) => {
+  await studentController.deleteStudent(req, res);
+};
 
 /**
  * @route   POST /api/v1/students
@@ -15,7 +47,7 @@ router.post(
   '/',
   authenticate,
   authorize(UserRole.ADMIN),
-  studentController.registerStudent
+  registerStudent
 );
 
 /**
@@ -27,7 +59,7 @@ router.get(
   '/',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.FACULTY),
-  studentController.getAllStudents
+  getAllStudents
 );
 
 /**
@@ -38,7 +70,7 @@ router.get(
 router.get(
   '/profile',
   authenticate,
-  studentController.getMyProfile
+  getMyProfile
 );
 
 /**
@@ -50,7 +82,7 @@ router.get(
   '/:id',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.FACULTY),
-  studentController.getStudentById
+  getStudentById
 );
 
 /**
@@ -62,7 +94,7 @@ router.get(
   '/registration/:registrationNumber',
   authenticate,
   authorize(UserRole.ADMIN, UserRole.FACULTY),
-  studentController.getStudentByRegistrationNumber
+  getStudentByRegistrationNumber
 );
 
 /**
@@ -74,7 +106,7 @@ router.put(
   '/:id',
   authenticate,
   authorize(UserRole.ADMIN),
-  studentController.updateStudent
+  updateStudent
 );
 
 /**
@@ -86,7 +118,7 @@ router.delete(
   '/:id',
   authenticate,
   authorize(UserRole.ADMIN),
-  studentController.deleteStudent
+  deleteStudent
 );
 
 export default router;

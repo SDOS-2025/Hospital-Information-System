@@ -2,9 +2,37 @@ import { Router } from 'express';
 import { ExamController } from '../controllers/exam.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { UserRole } from '../types/auth.types';
+import { AuditResource } from '../models/AuditLog';
+import { createAuditedRouter } from '../utils/audit-routes.util';
+import { RequestHandler } from 'express';
 
 const examController = new ExamController();
-const router = Router();
+const router = createAuditedRouter(AuditResource.EXAM);
+
+// Convert controller methods to RequestHandler type with proper async handling
+const createExam: RequestHandler = async (req, res, next) => {
+  await examController.createExam(req, res);
+};
+
+const getAllExams: RequestHandler = async (req, res, next) => {
+  await examController.getAllExams(req, res);
+};
+
+const getExamById: RequestHandler = async (req, res, next) => {
+  await examController.getExamById(req, res);
+};
+
+const updateExam: RequestHandler = async (req, res, next) => {
+  await examController.updateExam(req, res);
+};
+
+const deleteExam: RequestHandler = async (req, res, next) => {
+  await examController.deleteExam(req, res);
+};
+
+const uploadMaterials: RequestHandler = async (req, res, next) => {
+  await examController.uploadMaterials(req, res);
+};
 
 /**
  * @route   POST /api/v1/exams
@@ -15,7 +43,7 @@ router.post(
   '/',
   authenticate,
   authorize(UserRole.FACULTY, UserRole.ADMIN),
-  examController.createExam
+  createExam
 );
 
 /**
@@ -26,7 +54,7 @@ router.post(
 router.get(
   '/',
   authenticate,
-  examController.getAllExams
+  getAllExams
 );
 
 /**
@@ -37,7 +65,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  examController.getExamById
+  getExamById
 );
 
 /**
@@ -49,7 +77,7 @@ router.put(
   '/:id',
   authenticate,
   authorize(UserRole.FACULTY, UserRole.ADMIN),
-  examController.updateExam
+  updateExam
 );
 
 /**
@@ -61,7 +89,7 @@ router.delete(
   '/:id',
   authenticate,
   authorize(UserRole.ADMIN),
-  examController.deleteExam
+  deleteExam
 );
 
 /**
@@ -73,7 +101,7 @@ router.post(
   '/:id/materials',
   authenticate,
   authorize(UserRole.FACULTY, UserRole.ADMIN),
-  examController.uploadMaterials
+  uploadMaterials
 );
 
 export default router;
