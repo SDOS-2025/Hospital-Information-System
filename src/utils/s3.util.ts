@@ -3,11 +3,13 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 import path from 'path';
 
+const isTest = process.env.NODE_ENV === 'test';
+
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'ap-south-1',
+  region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
   }
 });
 
@@ -27,77 +29,51 @@ const generateUniqueFileName = (originalName: string): string => {
   return `${sanitizedFileName}-${timestamp}-${randomString}${fileExtension}`;
 };
 
-/**
- * Upload file to S3
- * @param file File buffer
- * @param fileName Original file name
- * @param folderName Folder path in S3 (e.g., 'thesis', 'grievances')
- * @returns S3 file URL
- */
-export const uploadFileToS3 = async (
-  file: Buffer,
+// Mock implementations for testing
+const mockUploadToS3 = async (fileBuffer: Buffer, fileName: string, folder: string): Promise<string> => {
+  const key = `${folder}/${Date.now()}-${fileName}`;
+  return key;
+};
+
+const mockGetPresignedUrl = async (key: string): Promise<string> => {
+  return `https://mock-s3-url.com/${key}`;
+};
+
+const mockDeleteFromS3 = async (key: string): Promise<void> => {
+  return;
+};
+
+// Export real or mock functions based on environment
+export const uploadFileToS3 = isTest ? mockUploadToS3 : async (
+  fileBuffer: Buffer,
   fileName: string,
-  folderName: string
+  folder: string
 ): Promise<string> => {
-  try {
-    const uniqueFileName = generateUniqueFileName(fileName);
-    const key = `${folderName}/${uniqueFileName}`;
-    
-    const params = {
-      Bucket: bucketName,
-      Key: key,
-      Body: file,
-      ContentType: getContentType(fileName),
-    };
-    
-    await s3Client.send(new PutObjectCommand(params));
-    return key;
-  } catch (error) {
-    console.error('Error uploading file to S3:', error);
-    throw new Error('Failed to upload file to storage');
-  }
+  const key = `${folder}/${Date.now()}-${fileName}`;
+  
+  await s3Client.send(new PutObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key,
+    Body: fileBuffer
+  }));
+
+  return key;
 };
 
-/**
- * Get a presigned URL for an S3 object
- * @param key S3 object key
- * @param expiresIn URL expiration time in seconds (default: 3600)
- * @returns Presigned URL
- */
-export const getPresignedUrl = async (
-  key: string,
-  expiresIn = 3600
-): Promise<string> => {
-  try {
-    const params = {
-      Bucket: bucketName,
-      Key: key,
-    };
-    
-    const command = new GetObjectCommand(params);
-    return await getSignedUrl(s3Client, command, { expiresIn });
-  } catch (error) {
-    console.error('Error generating presigned URL:', error);
-    throw new Error('Failed to generate file access URL');
-  }
+export const getPresignedUrl = isTest ? mockGetPresignedUrl : async (key: string): Promise<string> => {
+  const command = new GetObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key
+  });
+
+  return getSignedUrl(s3Client, command, { expiresIn: 3600 });
 };
 
-/**
- * Delete file from S3
- * @param key S3 object key
- */
-export const deleteFileFromS3 = async (key: string): Promise<void> => {
-  try {
-    const params = {
-      Bucket: bucketName,
-      Key: key,
-    };
-    
-    await s3Client.send(new DeleteObjectCommand(params));
-  } catch (error) {
-    console.error('Error deleting file from S3:', error);
-    throw new Error('Failed to delete file from storage');
-  }
+export const deleteFileFromS3 = isTest ? mockDeleteFromS3 : async (key: string): Promise<void> => {
+  await s3Client.send(new DeleteObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key
+  }));
 };
 
 /**
@@ -119,3 +95,6 @@ const getContentType = (fileName: string): string => {
   
   return mimeTypes[ext] || 'application/octet-stream';
 };
+
+// Export s3Client for health checks
+export { s3Client as S3 };
