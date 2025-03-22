@@ -1,7 +1,12 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
+import path from 'path';
 
 config();
+
+const isProd = process.env.NODE_ENV === 'production';
+const rootDir = isProd ? 'dist' : 'src';
+const fileExtension = isProd ? '.js' : '.ts';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -12,7 +17,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_DATABASE || 'hospital_information_system',
   synchronize: process.env.DB_SYNCHRONIZE === 'true',
   logging: process.env.DB_LOGGING === 'true',
-  entities: ['src/models/**/*.ts'],
-  migrations: ['src/db/migrations/**/*.ts'],
+  entities: [path.join(rootDir, 'models', `**/*${fileExtension}`)],
+  migrations: [path.join(rootDir, 'db', 'migrations', `**/*${fileExtension}`)],
   subscribers: [],
 });

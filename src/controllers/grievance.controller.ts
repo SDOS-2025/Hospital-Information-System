@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { GrievanceService } from '../services/grievance.service';
 import { GrievanceStatus, GrievanceCategory, GrievancePriority } from '../models/Grievance';
 import { AuthRequest } from '../types/auth.types';
+import { AuditService } from '../services/audit.service';
+import { AuditAction, AuditResource } from '../models/AuditLog';
 import multer from 'multer';
 
 // Configure multer for memory storage
@@ -13,9 +15,11 @@ const upload = multer({
 
 export class GrievanceController {
   private grievanceService: GrievanceService;
+  private auditService: AuditService;
 
   constructor() {
     this.grievanceService = new GrievanceService();
+    this.auditService = new AuditService();
   }
 
   /**
@@ -56,6 +60,23 @@ export class GrievanceController {
         submitterId: req.user.id,
         priority: priority as GrievancePriority,
         isAnonymous: isAnonymous === 'true' || isAnonymous === true
+      });
+
+      // Log grievance submission
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.CREATE,
+        resource: AuditResource.GRIEVANCE,
+        resourceId: grievance.id,
+        description: `New grievance submitted: ${grievance.isAnonymous ? '[Anonymous]' : ''} ${category}`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          category,
+          priority: grievance.priority,
+          isAnonymous: grievance.isAnonymous
+        }
       });
 
       return res.status(201).json({
@@ -113,6 +134,22 @@ export class GrievanceController {
             }))
           );
 
+          // Log attachment upload
+          const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+          await this.auditService.createLog({
+            action: AuditAction.UPLOAD,
+            resource: AuditResource.GRIEVANCE,
+            resourceId: id,
+            description: `${files.length} attachment(s) uploaded for grievance`,
+            userId: req.user.id,
+            ipAddress,
+            userAgent: req.headers['user-agent'],
+            details: {
+              attachmentCount: files.length,
+              fileNames: files.map(f => f.originalname)
+            }
+          });
+
           resolve(res.status(200).json({
             status: 'success',
             message: 'Attachments uploaded successfully',
@@ -157,6 +194,23 @@ export class GrievanceController {
         assignedTo
       );
 
+      // Log status update
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.GRIEVANCE,
+        resourceId: id,
+        description: `Grievance status updated to ${status}${assignedTo ? ' and assigned to staff' : ''}`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          status,
+          assignedTo: assignedTo || null,
+          hasComments: !!comments
+        }
+      });
+
       return res.status(200).json({
         status: 'success',
         message: 'Grievance status updated successfully',
@@ -193,6 +247,21 @@ export class GrievanceController {
       }
 
       const grievance = await this.grievanceService.addResolution(id, resolution);
+
+      // Log resolution
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.GRIEVANCE,
+        resourceId: id,
+        description: `Resolution added to grievance`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          resolutionLength: resolution.length
+        }
+      });
 
       return res.status(200).json({
         status: 'success',
@@ -351,6 +420,21 @@ export class GrievanceController {
 
       const grievance = await this.grievanceService.updateGrievance(id, req.user.id, updateData);
 
+      // Log grievance update
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.GRIEVANCE,
+        resourceId: id,
+        description: `Grievance details updated`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          updatedFields: Object.keys(updateData)
+        }
+      });
+
       return res.status(200).json({
         status: 'success',
         message: 'Grievance updated successfully',
@@ -378,6 +462,18 @@ export class GrievanceController {
 
       const { id } = req.params;
       await this.grievanceService.deleteGrievance(id, req.user.id);
+
+      // Log grievance deletion
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.DELETE,
+        resource: AuditResource.GRIEVANCE,
+        resourceId: id,
+        description: `Grievance deleted`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent']
+      });
 
       return res.status(200).json({
         status: 'success',

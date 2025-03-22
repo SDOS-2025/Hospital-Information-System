@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { AdmissionService } from '../services/admission.service';
 import { AdmissionStatus } from '../models/Admission';
+import { AuditService } from '../services/audit.service';
+import { AuditAction, AuditResource } from '../models/AuditLog';
+import { AuthRequest } from '../types/auth.types';
 import multer from 'multer';
 
 const storage = multer.memoryStorage();
@@ -11,9 +14,11 @@ const upload = multer({
 
 export class AdmissionController {
   private admissionService: AdmissionService;
+  private auditService: AuditService;
 
   constructor() {
     this.admissionService = new AdmissionService();
+    this.auditService = new AuditService();
   }
 
   /**
@@ -51,6 +56,18 @@ export class AdmissionController {
         personalDetails,
         educationHistory,
         entranceExamScore: entranceExamScore ? Number(entranceExamScore) : undefined
+      });
+
+      // Log admission application submission
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.CREATE,
+        resource: AuditResource.ADMISSION,
+        resourceId: admission.id,
+        description: `New admission application submitted for ${program} in ${department}`,
+        userId: undefined, // Not authenticated yet
+        ipAddress,
+        userAgent: req.headers['user-agent']
       });
 
       return res.status(201).json({
@@ -100,6 +117,22 @@ export class AdmissionController {
             }))
           );
 
+          // Log document upload
+          const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+          await this.auditService.createLog({
+            action: AuditAction.UPLOAD,
+            resource: AuditResource.ADMISSION,
+            resourceId: admission.id,
+            description: `${files.length} document(s) uploaded for admission application`,
+            userId: (req as AuthRequest).user?.id,
+            ipAddress,
+            userAgent: req.headers['user-agent'],
+            details: {
+              documentCount: files.length,
+              fileNames: files.map(f => f.originalname)
+            }
+          });
+
           resolve(res.status(200).json({
             status: 'success',
             message: 'Documents uploaded successfully',
@@ -118,7 +151,7 @@ export class AdmissionController {
   /**
    * Schedule interview
    */
-  scheduleInterview = async (req: Request, res: Response): Promise<Response> => {
+  scheduleInterview = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
       const { id } = req.params;
       const { interviewDate, interviewPanel } = req.body;
@@ -136,6 +169,22 @@ export class AdmissionController {
         interviewPanel
       );
 
+      // Log interview scheduling
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.ADMISSION,
+        resourceId: admission.id,
+        description: `Interview scheduled for admission application`,
+        userId: req.user?.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          interviewDate,
+          interviewPanel
+        }
+      });
+
       return res.status(200).json({
         status: 'success',
         message: 'Interview scheduled successfully',
@@ -152,7 +201,7 @@ export class AdmissionController {
   /**
    * Record interview results
    */
-  recordInterviewResults = async (req: Request, res: Response): Promise<Response> => {
+  recordInterviewResults = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
       const { id } = req.params;
       const { notes, status, remarks } = req.body;
@@ -171,6 +220,23 @@ export class AdmissionController {
         remarks
       );
 
+      // Log interview results
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: status === AdmissionStatus.APPROVED ? AuditAction.APPROVE : AuditAction.REJECT,
+        resource: AuditResource.ADMISSION,
+        resourceId: admission.id,
+        description: `Interview ${status === AdmissionStatus.APPROVED ? 'approved' : 'rejected'} for admission application`,
+        userId: req.user?.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          status,
+          notes: notes.substring(0, 100) + (notes.length > 100 ? '...' : ''),
+          remarks: remarks || null
+        }
+      });
+
       return res.status(200).json({
         status: 'success',
         message: 'Interview results recorded successfully',
@@ -187,10 +253,28 @@ export class AdmissionController {
   /**
    * Complete enrollment
    */
-  completeEnrollment = async (req: Request, res: Response): Promise<Response> => {
+  completeEnrollment = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
       const { id } = req.params;
       const result = await this.admissionService.completeEnrollment(id);
+
+      // Log enrollment completion
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.ADMISSION,
+        resourceId: result.admission.id,
+        description: `Enrollment completed for admission application, student created`,
+        userId: req.user?.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          studentId: result.student.id,
+          registrationNumber: result.student.registrationNumber,
+          program: result.student.program,
+          department: result.student.department
+        }
+      });
 
       return res.status(200).json({
         status: 'success',
@@ -266,7 +350,7 @@ export class AdmissionController {
   /**
    * Update admission
    */
-  updateAdmission = async (req: Request, res: Response): Promise<Response> => {
+  updateAdmission = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
       const { id } = req.params;
       const {
@@ -291,6 +375,21 @@ export class AdmissionController {
 
       const admission = await this.admissionService.updateAdmission(id, updateData);
 
+      // Log admission update
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.ADMISSION,
+        resourceId: id,
+        description: `Admission application updated`,
+        userId: req.user?.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          updateFields: Object.keys(updateData)
+        }
+      });
+
       return res.status(200).json({
         status: 'success',
         message: 'Admission updated successfully',
@@ -307,10 +406,22 @@ export class AdmissionController {
   /**
    * Cancel admission
    */
-  cancelAdmission = async (req: Request, res: Response): Promise<Response> => {
+  cancelAdmission = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
       const { id } = req.params;
       await this.admissionService.cancelAdmission(id);
+
+      // Log admission cancellation
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.ADMISSION,
+        resourceId: id,
+        description: `Admission application cancelled`,
+        userId: req.user?.id,
+        ipAddress,
+        userAgent: req.headers['user-agent']
+      });
 
       return res.status(200).json({
         status: 'success',
@@ -327,7 +438,7 @@ export class AdmissionController {
   /**
    * Bulk submit admission applications
    */
-  bulkSubmitApplications = async (req: Request, res: Response): Promise<Response> => {
+  bulkSubmitApplications = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
       const { applications } = req.body;
 
@@ -357,6 +468,21 @@ export class AdmissionController {
 
       const admissions = await this.admissionService.bulkSubmitApplications(applications);
 
+      // Log bulk admission submission
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.CREATE,
+        resource: AuditResource.ADMISSION,
+        description: `Bulk submission: ${admissions.length} admission applications submitted`,
+        userId: req.user?.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          count: admissions.length,
+          admissionIds: admissions.map(a => a.id)
+        }
+      });
+
       return res.status(201).json({
         status: 'success',
         message: `Successfully submitted ${admissions.length} applications`,
@@ -373,7 +499,7 @@ export class AdmissionController {
   /**
    * Bulk update admission status
    */
-  bulkUpdateStatus = async (req: Request, res: Response): Promise<Response> => {
+  bulkUpdateStatus = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
       const { admissionIds, status, remarks } = req.body;
 
@@ -396,6 +522,23 @@ export class AdmissionController {
         status,
         remarks
       );
+
+      // Log bulk status update
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.ADMISSION,
+        description: `Bulk status update: ${admissions.length} admissions updated to ${status}`,
+        userId: req.user?.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          count: admissions.length,
+          status,
+          remarks: remarks || null,
+          admissionIds
+        }
+      });
 
       return res.status(200).json({
         status: 'success',

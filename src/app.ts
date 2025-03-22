@@ -7,6 +7,8 @@ import { AppDataSource } from './db/data-source';
 import Redis from 'ioredis';
 import apiRoutes from './routes';
 import { HealthCheck } from './utils/health-check.util';
+import { AuditService } from './services/audit.service';
+import { AuditAction, AuditResource } from './models/AuditLog';
 
 // Load environment variables
 config();
@@ -15,15 +17,27 @@ class App {
   public app: express.Application;
   public redis: Redis;
   private healthCheck: HealthCheck;
+  private auditService: AuditService;
 
   constructor() {
     this.app = express();
     this.configureMiddleware();
-    this.setupDatabase();
-    this.setupRedis();
-    this.setupHealthCheck();
-    this.setupRoutes();
-    this.setupErrorHandling();
+    this.initializeApp();
+  }
+
+  private async initializeApp(): Promise<void> {
+    try {
+      await this.setupDatabase();
+      this.setupRedis();
+      this.setupHealthCheck();
+      this.setupAuditService();
+      this.setupRoutes();
+      this.setupErrorHandling();
+      console.log('Application initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize application:', error);
+      // Consider implementing a more graceful shutdown or retry mechanism here
+    }
   }
 
   private configureMiddleware(): void {
@@ -45,6 +59,7 @@ class App {
       console.log('Database connection established');
     } catch (error) {
       console.error('Error connecting to database:', error);
+      throw error; // Re-throw the error to be caught by initializeApp
     }
   }
 
@@ -57,6 +72,7 @@ class App {
       console.log('Redis connection established');
     } catch (error) {
       console.error('Error connecting to Redis:', error);
+      throw error; // Re-throw to be caught by initializeApp
     }
   }
 
@@ -64,11 +80,34 @@ class App {
     this.healthCheck = new HealthCheck(this.redis);
   }
 
+  private setupAuditService(): void {
+    this.auditService = new AuditService();
+  }
+
   private setupRoutes(): void {
     // Health check route
     this.app.get('/health', async (req: Request, res: Response) => {
       try {
         const status = await this.healthCheck.checkAll();
+        const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+
+        // Log the health check result
+        await this.auditService.createLog({
+          action: AuditAction.READ,
+          resource: AuditResource.SYSTEM,
+          description: `Health check performed: System is ${status.overall ? 'healthy' : 'unhealthy'}`,
+          userId: (req as any).user?.id, // Will be undefined for unauthenticated requests
+          ipAddress,
+          userAgent: req.headers['user-agent'],
+          details: {
+            overall: status.overall,
+            database: status.database,
+            redis: status.redis,
+            email: status.email,
+            storage: status.storage
+          }
+        });
+
         res.status(status.overall ? 200 : 503).json({
           status: status.overall ? 'healthy' : 'unhealthy',
           timestamp: new Date().toISOString(),

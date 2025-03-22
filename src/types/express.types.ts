@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ParamsDictionary } from 'express-serve-static-core';
 import { ParsedQs } from 'qs';
+import { UserRole } from './auth.types';
 
 export interface TypedRequestBody<T> extends Request {
   body: T;
@@ -25,3 +26,11 @@ export type AsyncRequestHandler<
   res: Response<ResBody>,
   next: NextFunction
 ) => Promise<void>;
+
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    role: UserRole;
+  };
+}

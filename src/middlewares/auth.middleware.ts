@@ -1,67 +1,56 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuthRequest, UserRole, TokenPayload } from '../types/auth.types';
+import { UserRole } from '../types/auth.types';
+import { AuthRequest } from '../types/express.types';
 
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
+// Validate JWT_SECRET at startup
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL ERROR: JWT_SECRET environment variable is not defined');
+  process.exit(1); // Exit the application if JWT_SECRET is not defined
+}
+
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
+    const token = req.headers.authorization?.split(' ')[1];
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Authentication required. No token provided.'
-      });
+    if (!token) {
+      res.status(401).json({ message: 'Authentication token is required' });
+      return;
     }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      res.status(500).json({ message: 'JWT configuration error' });
+      return;
+    }
+
+    const decoded = jwt.verify(token, secret) as { id: string; email: string; role: UserRole };
+    (req as AuthRequest).user = decoded;
     
-    // Extract the token
-    const token = authHeader.split(' ')[1];
-    
-    // Verify token
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    ) as TokenPayload;
-    
-    // Add user info to request
-    req.user = decoded;
     next();
   } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Token expired. Please login again.'
-      });
-    }
-    
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Invalid token. Please login again.'
-      });
-    }
-    
-    return res.status(500).json({
-      status: 'error',
-      message: 'Authentication failed. Please try again.'
-    });
+    res.status(401).json({ message: 'Invalid or expired token' });
+    return;
   }
 };
 
 export const authorize = (...roles: UserRole[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Authentication required'
-      });
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const authReq = req as AuthRequest;
+    
+    if (!authReq.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
     }
 
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        status: 'error',
-        message: 'You do not have permission to perform this action'
-      });
+    if (!roles.includes(authReq.user.role)) {
+      res.status(403).json({ message: 'Insufficient permissions' });
+      return;
     }
 
     next();

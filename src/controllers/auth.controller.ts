@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { UserRole } from '../types/auth.types';
+import { AuthRequest } from '../types/auth.types';
 
 export class AuthController {
   private authService: AuthService;
@@ -32,14 +33,21 @@ export class AuthController {
         });
       }
 
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      const userAgent = req.headers['user-agent'];
+
       // Register user
-      const user = await this.authService.register({
-        firstName,
-        lastName,
-        email,
-        password,
-        role: role as UserRole
-      });
+      const user = await this.authService.register(
+        {
+          firstName,
+          lastName,
+          email,
+          password,
+          role: role as UserRole
+        },
+        ipAddress,
+        userAgent
+      );
 
       return res.status(201).json({
         status: 'success',
@@ -75,8 +83,11 @@ export class AuthController {
         });
       }
 
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      const userAgent = req.headers['user-agent'];
+
       // Login user
-      const { user, token } = await this.authService.login(email, password);
+      const { user, token } = await this.authService.login(email, password, ipAddress, userAgent);
 
       return res.status(200).json({
         status: 'success',
@@ -115,7 +126,10 @@ export class AuthController {
         });
       }
 
-      await this.authService.forgotPassword(email);
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      const userAgent = req.headers['user-agent'];
+
+      await this.authService.forgotPassword(email, ipAddress, userAgent);
 
       return res.status(200).json({
         status: 'success',
@@ -143,7 +157,10 @@ export class AuthController {
         });
       }
 
-      await this.authService.resetPassword(token, password);
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      const userAgent = req.headers['user-agent'];
+
+      await this.authService.resetPassword(token, password, ipAddress, userAgent);
 
       return res.status(200).json({
         status: 'success',
@@ -151,6 +168,35 @@ export class AuthController {
       });
     } catch (error) {
       return res.status(400).json({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'An error occurred'
+      });
+    }
+  };
+
+  /**
+   * Logout user
+   */
+  logout = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Authentication required'
+        });
+      }
+
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      const userAgent = req.headers['user-agent'];
+
+      await this.authService.logout(req.user.id, ipAddress, userAgent);
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Logged out successfully'
+      });
+    } catch (error) {
+      return res.status(500).json({
         status: 'error',
         message: error instanceof Error ? error.message : 'An error occurred'
       });

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { LeaveService } from '../services/leave.service';
 import { LeaveStatus, LeaveType } from '../models/Leave';
 import { AuthRequest } from '../types/auth.types';
+import { AuditService } from '../services/audit.service';
+import { AuditAction, AuditResource } from '../models/AuditLog';
 import multer from 'multer';
 
 const storage = multer.memoryStorage();
@@ -12,9 +14,11 @@ const upload = multer({
 
 export class LeaveController {
   private leaveService: LeaveService;
+  private auditService: AuditService;
 
   constructor() {
     this.leaveService = new LeaveService();
+    this.auditService = new AuditService();
   }
 
   /**
@@ -62,6 +66,25 @@ export class LeaveController {
         isEmergency: isEmergency === true
       });
 
+      // Log leave application
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.CREATE,
+        resource: AuditResource.LEAVE,
+        resourceId: leave.id,
+        description: `New ${type} leave application submitted ${isEmergency ? '(Emergency)' : ''}`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          type,
+          startDate,
+          endDate,
+          isEmergency: !!isEmergency,
+          reasonLength: reason.length
+        }
+      });
+
       return res.status(201).json({
         status: 'success',
         message: 'Leave application submitted successfully',
@@ -78,7 +101,7 @@ export class LeaveController {
   /**
    * Upload supporting documents
    */
-  uploadDocuments = async (req: Request, res: Response): Promise<Response> => {
+  uploadDocuments = async (req: AuthRequest, res: Response): Promise<Response> => {
     return new Promise((resolve) => {
       upload(req, res, async (err) => {
         if (err) {
@@ -90,6 +113,14 @@ export class LeaveController {
         }
 
         try {
+          if (!req.user || !req.user.id) {
+            resolve(res.status(401).json({
+              status: 'error',
+              message: 'Authentication required'
+            }));
+            return;
+          }
+
           const { id } = req.params;
           const files = req.files as Express.Multer.File[];
 
@@ -108,6 +139,22 @@ export class LeaveController {
               originalname: file.originalname
             }))
           );
+
+          // Log document upload
+          const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+          await this.auditService.createLog({
+            action: AuditAction.UPLOAD,
+            resource: AuditResource.LEAVE,
+            resourceId: id,
+            description: `${files.length} document(s) uploaded for leave application`,
+            userId: req.user.id,
+            ipAddress,
+            userAgent: req.headers['user-agent'],
+            details: {
+              documentCount: files.length,
+              fileNames: files.map(f => f.originalname)
+            }
+          });
 
           resolve(res.status(200).json({
             status: 'success',
@@ -152,6 +199,24 @@ export class LeaveController {
         req.user.id,
         comments
       );
+
+      // Log leave status update
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: status === LeaveStatus.APPROVED ? AuditAction.APPROVE : 
+                status === LeaveStatus.REJECTED ? AuditAction.REJECT : AuditAction.UPDATE,
+        resource: AuditResource.LEAVE,
+        resourceId: id,
+        description: `Leave application ${status.toLowerCase()}${comments ? ' with comments' : ''}`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          status,
+          hasComments: !!comments,
+          leaveType: leave.type
+        }
+      });
 
       return res.status(200).json({
         status: 'success',
@@ -269,7 +334,26 @@ export class LeaveController {
       }
 
       const { id } = req.params;
+      const leave = await this.leaveService.getLeaveById(id);
       await this.leaveService.cancelLeave(id, req.user.id);
+
+      // Log leave cancellation
+      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress) as string;
+      await this.auditService.createLog({
+        action: AuditAction.UPDATE,
+        resource: AuditResource.LEAVE,
+        resourceId: id,
+        description: `Leave application cancelled`,
+        userId: req.user.id,
+        ipAddress,
+        userAgent: req.headers['user-agent'],
+        details: {
+          leaveType: leave.type,
+          originalStatus: leave.status,
+          startDate: leave.startDate,
+          endDate: leave.endDate
+        }
+      });
 
       return res.status(200).json({
         status: 'success',

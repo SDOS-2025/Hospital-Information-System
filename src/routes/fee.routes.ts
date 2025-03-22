@@ -2,126 +2,63 @@ import { Router } from 'express';
 import { FeeController } from '../controllers/fee.controller';
 import { authenticate, authorize } from '../middlewares/auth.middleware';
 import { UserRole } from '../types/auth.types';
+import { AuditResource } from '../models/AuditLog';
+import { createAuditedRouter } from '../utils/audit-routes.util';
+import { RequestHandler } from 'express';
 
 const feeController = new FeeController();
-const router = Router();
+const router = createAuditedRouter(AuditResource.FEE);
 
-/**
- * @route   POST /api/v1/fees
- * @desc    Create a new fee record
- * @access  Admin only
- */
-router.post(
-  '/',
-  authenticate,
-  authorize(UserRole.ADMIN),
-  feeController.createFeeRecord
-);
+// Convert controller methods to RequestHandler type with proper async handling
+const createFeeRecord: RequestHandler = async (req, res, next) => {
+  await feeController.createFeeRecord(req, res);
+};
 
-/**
- * @route   POST /api/v1/fees/bulk
- * @desc    Generate bulk fee records
- * @access  Admin only
- */
-router.post(
-  '/bulk',
-  authenticate,
-  authorize(UserRole.ADMIN),
-  feeController.generateBulkFees
-);
+const generateBulkFees: RequestHandler = async (req, res, next) => {
+  await feeController.generateBulkFees(req, res);
+};
 
-/**
- * @route   GET /api/v1/fees
- * @desc    Get all fees with optional filtering
- * @access  Admin and Staff
- */
-router.get(
-  '/',
-  authenticate,
-  authorize(UserRole.ADMIN, UserRole.STAFF),
-  feeController.getAllFees
-);
+const getAllFees: RequestHandler = async (req, res, next) => {
+  await feeController.getAllFees(req, res);
+};
 
-/**
- * @route   GET /api/v1/fees/my
- * @desc    Get fees for the logged-in student
- * @access  Authenticated Students
- */
-router.get(
-  '/my',
-  authenticate,
-  authorize(UserRole.STUDENT),
-  feeController.getMyFees
-);
+const getMyFees: RequestHandler = async (req, res, next) => {
+  await feeController.getMyFees(req, res);
+};
 
-/**
- * @route   GET /api/v1/fees/:id
- * @desc    Get fee by ID
- * @access  Admin, Staff, and fee owner Student
- */
-router.get(
-  '/:id',
-  authenticate,
-  feeController.getFeeById
-);
+const getFeeById: RequestHandler = async (req, res, next) => {
+  await feeController.getFeeById(req, res);
+};
 
-/**
- * @route   PUT /api/v1/fees/:id
- * @desc    Update fee details
- * @access  Admin only
- */
-router.put(
-  '/:id',
-  authenticate,
-  authorize(UserRole.ADMIN),
-  feeController.updateFee
-);
+const updateFee: RequestHandler = async (req, res, next) => {
+  await feeController.updateFee(req, res);
+};
 
-/**
- * @route   POST /api/v1/fees/:id/payment
- * @desc    Record fee payment
- * @access  Admin and Staff
- */
-router.post(
-  '/:id/payment',
-  authenticate,
-  authorize(UserRole.ADMIN, UserRole.STAFF),
-  feeController.recordPayment
-);
+const recordPayment: RequestHandler = async (req, res, next) => {
+  await feeController.recordPayment(req, res);
+};
 
-/**
- * @route   POST /api/v1/fees/:id/upload-receipt
- * @desc    Upload payment receipt
- * @access  Admin, Staff, and Students
- */
-router.post(
-  '/:id/upload-receipt',
-  authenticate,
-  feeController.uploadReceipt
-);
+const uploadReceipt: RequestHandler = async (req, res, next) => {
+  await feeController.uploadReceipt(req, res);
+};
 
-/**
- * @route   POST /api/v1/fees/:id/late-fee
- * @desc    Add late fee
- * @access  Admin only
- */
-router.post(
-  '/:id/late-fee',
-  authenticate,
-  authorize(UserRole.ADMIN),
-  feeController.addLateFee
-);
+const addLateFee: RequestHandler = async (req, res, next) => {
+  await feeController.addLateFee(req, res);
+};
 
-/**
- * @route   DELETE /api/v1/fees/:id
- * @desc    Delete fee record
- * @access  Admin only
- */
-router.delete(
-  '/:id',
-  authenticate,
-  authorize(UserRole.ADMIN),
-  feeController.deleteFee
-);
+const deleteFee: RequestHandler = async (req, res, next) => {
+  await feeController.deleteFee(req, res);
+};
+
+router.post('/', authenticate, authorize(UserRole.ADMIN), createFeeRecord);
+router.post('/bulk', authenticate, authorize(UserRole.ADMIN), generateBulkFees);
+router.get('/', authenticate, authorize(UserRole.ADMIN, UserRole.STAFF), getAllFees);
+router.get('/my', authenticate, authorize(UserRole.STUDENT), getMyFees);
+router.get('/:id', authenticate, getFeeById);
+router.put('/:id', authenticate, authorize(UserRole.ADMIN), updateFee);
+router.post('/:id/payment', authenticate, authorize(UserRole.ADMIN, UserRole.STAFF), recordPayment);
+router.post('/:id/upload-receipt', authenticate, uploadReceipt);
+router.post('/:id/late-fee', authenticate, authorize(UserRole.ADMIN), addLateFee);
+router.delete('/:id', authenticate, authorize(UserRole.ADMIN), deleteFee);
 
 export default router;

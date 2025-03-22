@@ -36,10 +36,10 @@ export class User {
   contactNumber: string;
 
   @Column({ nullable: true })
-  resetPasswordToken: string;
+  resetPasswordToken?: string;
 
-  @Column({ nullable: true })
-  resetPasswordExpires: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  resetPasswordExpires?: Date;
 
   @CreateDateColumn()
   createdAt: Date;
