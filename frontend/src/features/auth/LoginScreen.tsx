@@ -53,7 +53,11 @@ export const LoginScreen: React.FC = () => {
         message: 'Login successful!',
         severity: 'success'
       });
-      navigate('/dashboard');
+      console.log('Login successful, redirecting to dashboard...');
+      // Add a small delay to ensure the token is properly set in localStorage
+      setTimeout(() => {
+        navigate('/');
+      }, 500);
     },
     onError: (error: Error) => {
       setNotification({

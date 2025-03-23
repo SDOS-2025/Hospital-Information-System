@@ -1,11 +1,12 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 import { LoginScreen } from './features/auth/LoginScreen';
+import StudentDashboard from './features/students/pages/StudentDashboard';
 // Import other feature pages as needed
 
 // Private route component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
-  const isAuthenticated = localStorage.getItem('accessToken') !== null;
+  const isAuthenticated = localStorage.getItem('token') !== null;
   
   return isAuthenticated ? element : <Navigate to="/login" replace />;
 };
@@ -19,7 +20,7 @@ const AppRoutes: React.FC = () => {
       {/* Protected routes */}
       <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<div>Dashboard Content</div>} />
+        <Route path="dashboard" element={<StudentDashboard />} />
         <Route path="students" element={<div>Students Content</div>} />
         {/* Add more routes for other features */}
         <Route path="admissions" element={<div>Admissions Content</div>} />
