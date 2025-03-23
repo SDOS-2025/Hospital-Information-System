@@ -1,12 +1,19 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { BrowserRouter } from 'react-router-dom';
+import { CssBaseline, ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import MainLayout from './components/layout/MainLayout';
-import { Students } from './features/students/pages/Students';
 import theme from './styles/theme';
+import AppRoutes from './AppRoutes';
 
-// Initialize React Query client
-const queryClient = new QueryClient();
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 function App() {
   return (
@@ -14,19 +21,7 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<Navigate to="/students" replace />} />
-              <Route path="admissions/*" element={<div>Admissions</div>} />
-              <Route path="exams/*" element={<div>Exams</div>} />
-              <Route path="faculty/*" element={<div>Faculty</div>} />
-              <Route path="fees/*" element={<div>Fees</div>} />
-              <Route path="grievances/*" element={<div>Grievances</div>} />
-              <Route path="leaves/*" element={<div>Leaves</div>} />
-              <Route path="students/*" element={<Students />} />
-              <Route path="thesis/*" element={<div>Thesis</div>} />
-            </Route>
-          </Routes>
+          <AppRoutes />
         </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
