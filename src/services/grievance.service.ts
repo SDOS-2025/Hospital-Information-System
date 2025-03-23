@@ -4,6 +4,18 @@ import { Grievance, GrievanceStatus, GrievanceCategory, GrievancePriority } from
 import { User } from '../models/User';
 import { uploadFileToS3, getPresignedUrl } from '../utils/s3.util';
 
+// Interface for grievance data with attachmentUrls
+interface GrievanceWithUrls extends Grievance {
+  attachmentUrls?: string[];
+}
+
+// Interface for anonymized grievance data
+interface AnonymizedGrievance extends Omit<Grievance, 'submitter' | 'submitterId'> {
+  submitter?: null;
+  submitterId?: null;
+  attachmentUrls?: string[];
+}
+
 export class GrievanceService {
   private grievanceRepository: Repository<Grievance>;
   private userRepository: Repository<User>;
@@ -149,7 +161,7 @@ export class GrievanceService {
   async getGrievanceById(
     grievanceId: string,
     userId?: string
-  ): Promise<Grievance> {
+  ): Promise<GrievanceWithUrls | AnonymizedGrievance> {
     const grievance = await this.grievanceRepository.findOne({
       where: { id: grievanceId },
       relations: ['submitter']
@@ -169,21 +181,27 @@ export class GrievanceService {
       throw new Error('You do not have permission to access this grievance');
     }
 
+    // Convert to GrievanceWithUrls type
+    const result = grievance as GrievanceWithUrls;
+
     // Generate presigned URLs for attachments
     if (grievance.attachments && grievance.attachments.length > 0) {
-      const presignedUrls = await Promise.all(
-        grievance.attachments.map(attachment => getPresignedUrl(attachment))
-      );
-      grievance.attachments = presignedUrls;
+      try {
+        result.attachmentUrls = await Promise.all(
+          grievance.attachments.map(attachment => getPresignedUrl(attachment))
+        );
+      } catch (error) {
+        console.error('Error generating presigned URLs:', error);
+        result.attachmentUrls = [];
+      }
     }
 
     // Hide submitter details if anonymous
     if (grievance.isAnonymous && userId !== grievance.submitterId) {
-      delete grievance.submitter;
-      delete grievance.submitterId;
+      return this.anonymizeGrievance(grievance, result.attachmentUrls);
     }
 
-    return grievance;
+    return result;
   }
 
   /**
@@ -195,7 +213,7 @@ export class GrievanceService {
     priority?: GrievancePriority;
     submitterId?: string;
     assignedTo?: string;
-  }): Promise<Grievance[]> {
+  }): Promise<(GrievanceWithUrls | AnonymizedGrievance)[]> {
     const query = this.grievanceRepository.createQueryBuilder('grievance')
       .leftJoinAndSelect('grievance.submitter', 'submitter');
 
@@ -218,25 +236,36 @@ export class GrievanceService {
     }
 
     const grievances = await query.getMany();
+    const result: (GrievanceWithUrls | AnonymizedGrievance)[] = [];
 
     // Process attachments and handle anonymous submissions
     for (const grievance of grievances) {
+      const grievanceWithUrls = grievance as GrievanceWithUrls;
+      
       // Generate presigned URLs for attachments
       if (grievance.attachments && grievance.attachments.length > 0) {
-        const presignedUrls = await Promise.all(
-          grievance.attachments.map(attachment => getPresignedUrl(attachment).catch(() => ''))
-        );
-        grievance.attachments = presignedUrls.filter(url => url !== '');
+        try {
+          grievanceWithUrls.attachmentUrls = await Promise.all(
+            grievance.attachments.map(attachment => getPresignedUrl(attachment))
+          );
+        } catch (error) {
+          console.error('Error generating presigned URLs:', error);
+          grievanceWithUrls.attachmentUrls = [];
+        }
       }
 
       // Hide submitter details for anonymous grievances
-      if (grievance.isAnonymous && filters?.submitterId !== grievance.submitterId) {
-        delete grievance.submitter;
-        delete grievance.submitterId;
+      // Only hide if the current user is not the submitter of this grievance
+      if (grievance.isAnonymous && 
+          filters?.submitterId && 
+          filters.submitterId !== grievance.submitterId) {
+        result.push(this.anonymizeGrievance(grievance, grievanceWithUrls.attachmentUrls));
+      } else {
+        result.push(grievanceWithUrls);
       }
     }
 
-    return grievances;
+    return result;
   }
 
   /**
@@ -252,9 +281,10 @@ export class GrievanceService {
       priority?: GrievancePriority;
       isAnonymous?: boolean;
     }
-  ): Promise<Grievance> {
+  ): Promise<Grievance | AnonymizedGrievance> {
     const grievance = await this.grievanceRepository.findOne({
-      where: { id: grievanceId }
+      where: { id: grievanceId },
+      relations: ['submitter']
     });
 
     if (!grievance) {
@@ -276,9 +306,16 @@ export class GrievanceService {
 
     // Update grievance details
     Object.assign(grievance, updateData);
+    
+    // Save the updated grievance
     await this.grievanceRepository.save(grievance);
-
-    return this.getGrievanceById(grievanceId, userId);
+    
+    // Hide submitter information if grievance is anonymous and viewed by someone else
+    if (grievance.isAnonymous && userId !== grievance.submitterId) {
+      return this.anonymizeGrievance(grievance);
+    }
+    
+    return grievance;
   }
 
   /**
@@ -321,5 +358,23 @@ export class GrievanceService {
     });
 
     return user?.role === 'grievance_committee' || user?.role === 'admin';
+  }
+
+  /**
+   * Helper method to anonymize grievance data
+   */
+  private anonymizeGrievance(grievance: Grievance, attachmentUrls?: string[]): AnonymizedGrievance {
+    // Create a new object without submitter information
+    const { submitter, submitterId, ...anonymousData } = grievance;
+    
+    const anonymizedGrievance = anonymousData as AnonymizedGrievance;
+    anonymizedGrievance.submitter = null;
+    anonymizedGrievance.submitterId = null;
+    
+    if (attachmentUrls) {
+      anonymizedGrievance.attachmentUrls = attachmentUrls;
+    }
+    
+    return anonymizedGrievance;
   }
 }

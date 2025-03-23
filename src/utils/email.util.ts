@@ -4,7 +4,8 @@ import fs from 'fs';
 import Handlebars from 'handlebars';
 
 // Initialize SendGrid with API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+const apiKey = process.env.SENDGRID_API_KEY || '';
+sgMail.setApiKey(apiKey);
 
 interface EmailOptions {
   to: string;
@@ -55,6 +56,12 @@ loadTemplates();
  * @param options Email options
  */
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
+  // Skip sending email if API key is not configured
+  if (!apiKey || !apiKey.startsWith('SG.')) {
+    console.log('SendGrid API key not configured. Skipping email send.');
+    return;
+  }
+
   try {
     const msg = {
       to: options.to,
@@ -68,7 +75,8 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
     console.log(`Email sent to ${options.to}`);
   } catch (error) {
     console.error('Error sending email:', error);
-    throw new Error('Failed to send email');
+    // Don't throw error, just log it
+    console.log('Continuing without sending email');
   }
 };
 

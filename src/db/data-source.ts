@@ -16,7 +16,7 @@ export const AppDataSource = new DataSource({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 5432,
   username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
+  password: process.env.DB_PASSWORD || '1234',
   database: process.env.DB_NAME || 'hospital_system',
   synchronize: isTest, // Only enable synchronize in test environment
   dropSchema: isTest, // Drop schema before sync in test environment

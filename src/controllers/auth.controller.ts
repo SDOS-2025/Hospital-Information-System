@@ -73,13 +73,21 @@ export class AuthController {
    */
   login = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { email, password } = req.body;
+      const { email, password, userType } = req.body;
 
       // Validate input
-      if (!email || !password) {
+      if (!email || !password || !userType) {
         return res.status(400).json({
           status: 'error',
-          message: 'Please provide email and password'
+          message: 'Please provide email, password and user type'
+        });
+      }
+
+      // Validate user type
+      if (!Object.values(UserRole).includes(userType as UserRole)) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Invalid user type. Must be one of: ${Object.values(UserRole).join(', ')}`
         });
       }
 
@@ -87,7 +95,7 @@ export class AuthController {
       const userAgent = req.headers['user-agent'];
 
       // Login user
-      const { user, token } = await this.authService.login(email, password, ipAddress, userAgent);
+      const { user, token } = await this.authService.login(email, password, ipAddress, userAgent, userType as UserRole);
 
       return res.status(200).json({
         status: 'success',

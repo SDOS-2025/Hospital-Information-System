@@ -70,7 +70,7 @@ export class AuthService {
   /**
    * Login user and generate JWT token
    */
-  async login(email: string, password: string, ipAddress: string, userAgent?: string): Promise<{ user: User; token: string }> {
+  async login(email: string, password: string, ipAddress: string, userAgent?: string, requiredRole?: UserRole): Promise<{ user: User; token: string }> {
     // Find user by email with password included
     const user = await this.userRepository
       .createQueryBuilder('user')
@@ -89,6 +89,21 @@ export class AuthService {
       });
       
       throw new Error('Invalid email or password');
+    }
+
+    // Validate role if specified
+    if (requiredRole && user.role !== requiredRole) {
+      await this.auditService.createLog({
+        action: AuditAction.FAILED_LOGIN,
+        resource: AuditResource.USER,
+        resourceId: user.id,
+        description: `Failed login attempt (wrong role type: ${requiredRole}): ${email}`,
+        userId: user.id,
+        ipAddress,
+        userAgent
+      });
+      
+      throw new Error(`Invalid credentials for ${requiredRole} login`);
     }
 
     if (!user.isActive) {

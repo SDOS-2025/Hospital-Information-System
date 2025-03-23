@@ -1,15 +1,15 @@
 import { AppDataSource } from '../db/data-source';
 import { Redis } from 'ioredis';
 import sgMail from '@sendgrid/mail';
-import AWS from 'aws-sdk';
 import { S3 } from './s3.util';
+import { ListBucketsCommand } from '@aws-sdk/client-s3';
 
 export interface HealthStatus {
+  overall: boolean;
   database: boolean;
   redis: boolean;
   email: boolean;
   storage: boolean;
-  overall: boolean;
   details: {
     database?: string;
     redis?: string;
@@ -19,108 +19,121 @@ export interface HealthStatus {
 }
 
 export class HealthCheck {
-  private redis: Redis;
+  private redis?: Redis;
 
-  constructor(redisClient: Redis) {
+  constructor(redisClient?: Redis) {
     this.redis = redisClient;
   }
 
   public async checkAll(): Promise<HealthStatus> {
+    const [dbResult, redisResult, emailResult, storageResult] = await Promise.all([
+      this.checkDatabase(),
+      this.checkRedis(),
+      this.checkEmail(),
+      this.checkStorage(),
+    ]);
+
     const status: HealthStatus = {
+      overall: false,
       database: false,
       redis: false,
       email: false,
       storage: false,
-      overall: false,
-      details: {}
+      details: {},
     };
 
-    // Check database
+    // Process database check result
+    status.database = dbResult.success;
+    if (!dbResult.success && dbResult.error) {
+      status.details.database = dbResult.error instanceof Error 
+        ? dbResult.error.message 
+        : 'Database connection failed';
+    }
+
+    // Process Redis check result - Redis is optional
+    if (!this.redis) {
+      status.redis = true; // Redis is considered healthy when disabled
+      status.details.redis = 'Redis is disabled';
+    } else {
+      status.redis = redisResult.success;
+      if (!redisResult.success && redisResult.error) {
+        status.details.redis = redisResult.error instanceof Error 
+          ? redisResult.error.message 
+          : 'Redis connection failed';
+      }
+    }
+
+    // Process email check result
+    status.email = emailResult.success;
+    if (!emailResult.success && emailResult.error) {
+      status.details.email = emailResult.error instanceof Error 
+        ? emailResult.error.message 
+        : 'Email service configuration failed';
+    }
+
+    // Process storage check result
+    status.storage = storageResult.success;
+    if (!storageResult.success && storageResult.error) {
+      status.details.storage = storageResult.error instanceof Error 
+        ? storageResult.error.message 
+        : 'S3 connection failed';
+    }
+
+    // Overall status - Redis is not considered in overall health when disabled
+    status.overall = status.database && status.email && status.storage && 
+      (this.redis ? status.redis : true);
+
+    return status;
+  }
+
+  public async checkDatabase(): Promise<{ success: boolean; error?: unknown }> {
     try {
       if (AppDataSource.isInitialized) {
         await AppDataSource.query('SELECT 1');
-        status.database = true;
+        return { success: true };
       }
+      return { success: false, error: new Error('Database not initialized') };
     } catch (error) {
-      status.details.database = error instanceof Error ? error.message : 'Database connection failed';
+      return { success: false, error };
+    }
+  }
+
+  public async checkRedis(): Promise<{ success: boolean; error?: unknown }> {
+    if (!this.redis) {
+      return { success: true }; // Redis is considered healthy when disabled
     }
 
-    // Check Redis
     try {
       await this.redis.ping();
-      status.redis = true;
+      return { success: true };
     } catch (error) {
-      status.details.redis = error instanceof Error ? error.message : 'Redis connection failed';
+      return { success: false, error };
     }
+  }
 
-    // Check SendGrid
+  public async checkEmail(): Promise<{ success: boolean; error?: unknown }> {
     try {
       const apiKey = process.env.SENDGRID_API_KEY;
       if (!apiKey) {
         throw new Error('SendGrid API key not configured');
       }
       sgMail.setApiKey(apiKey);
-      status.email = true;
+      // Note: This is making the function async for consistency, even though
+      // there's no actual async operation right now. In a real-world scenario,
+      // we might want to make a test call to SendGrid's API to really verify.
+      return { success: true };
     } catch (error) {
-      status.details.email = error instanceof Error ? error.message : 'Email service configuration failed';
+      return { success: false, error };
     }
+  }
 
-    // Check S3
+  public async checkStorage(): Promise<{ success: boolean; error?: unknown }> {
     try {
-      const s3 = S3.getInstance();
-      await s3.listBuckets().promise();
-      status.storage = true;
+      // Use the S3 client directly with AWS SDK v3 command pattern
+      await S3.send(new ListBucketsCommand({}));
+      return { success: true };
     } catch (error) {
-      status.details.storage = error instanceof Error ? error.message : 'S3 connection failed';
-    }
-
-    // Overall status
-    status.overall = status.database && status.redis && status.email && status.storage;
-
-    return status;
-  }
-
-  public async checkDatabase(): Promise<boolean> {
-    try {
-      if (AppDataSource.isInitialized) {
-        await AppDataSource.query('SELECT 1');
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  }
-
-  public async checkRedis(): Promise<boolean> {
-    try {
-      await this.redis.ping();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  public checkEmail(): boolean {
-    try {
-      const apiKey = process.env.SENDGRID_API_KEY;
-      if (!apiKey) {
-        return false;
-      }
-      sgMail.setApiKey(apiKey);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  public async checkStorage(): Promise<boolean> {
-    try {
-      const s3 = S3.getInstance();
-      await s3.listBuckets().promise();
-      return true;
-    } catch {
-      return false;
+      return { success: false, error };
     }
   }
 }

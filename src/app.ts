@@ -15,7 +15,7 @@ config();
 
 class App {
   public app: express.Application;
-  public redis: Redis;
+  public redis?: Redis; // Make redis optional
   private healthCheck: HealthCheck;
   private auditService: AuditService;
 
@@ -64,15 +64,45 @@ class App {
   }
 
   private setupRedis(): void {
+    // Check if Redis is explicitly disabled
+    if (process.env.REDIS_ENABLED === 'false') {
+      console.log('Redis is disabled by configuration');
+      return;
+    }
+
     try {
-      this.redis = new Redis({
+      const redis = new Redis({
         host: process.env.REDIS_HOST || 'localhost',
         port: Number(process.env.REDIS_PORT) || 6379,
+        maxRetriesPerRequest: 1,
+        lazyConnect: true, // Don't connect immediately
+        retryStrategy: () => null // Disable retries completely
       });
-      console.log('Redis connection established');
+
+      // Handle connection events
+      redis.on('error', (error) => {
+        console.warn('Redis connection error:', error);
+        if (!this.redis) {
+          // Only log this message on initial connection failure
+          console.log('Application will continue without Redis');
+        }
+        // Clean up the failed connection
+        redis.disconnect();
+      });
+
+      redis.on('connect', () => {
+        console.log('Redis connection established');
+        this.redis = redis;
+      });
+
+      // Attempt to connect
+      redis.connect().catch(() => {
+        // Connection error is already handled by the error event
+      });
+
     } catch (error) {
-      console.error('Error connecting to Redis:', error);
-      throw error; // Re-throw to be caught by initializeApp
+      console.warn('Failed to initialize Redis:', error);
+      console.log('Application will continue without Redis');
     }
   }
 
