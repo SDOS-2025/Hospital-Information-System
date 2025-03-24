@@ -22,7 +22,9 @@ import {
   TableRow,
   Container,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Tooltip,
+  Fade
 } from '@mui/material';
 import { 
   CalendarMonth, 
@@ -34,7 +36,8 @@ import {
   Report,
   ExitToApp,
   Person,
-  Dashboard
+  Dashboard,
+  Notifications
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -105,11 +108,46 @@ const StudentDashboard: React.FC = () => {
 
   // Dashboard menu items
   const menuItems = [
-    { title: 'Fee Status', icon: <AttachMoney />, color: '#8BC34A', path: '/fees' },
-    { title: 'Thesis Registration', icon: <Book />, color: '#8BC34A', path: '/thesis' },
-    { title: 'Exams & Grades', icon: <School />, color: '#D4AF37', path: '/exams' },
-    { title: 'Leave Application', icon: <Assignment />, color: '#D08B93', path: '/leaves' },
-    { title: 'Report Grievance', icon: <Report />, color: '#D08B93', path: '/grievances' }
+    { 
+      title: 'Fee Status', 
+      icon: <AttachMoney />, 
+      color: '#8BC34A', 
+      hoverColor: '#7CB342',
+      path: '/fees',
+      description: 'View and pay fees'
+    },
+    { 
+      title: 'Thesis Registration', 
+      icon: <Book />, 
+      color: '#8BC34A', 
+      hoverColor: '#7CB342',
+      path: '/thesis',
+      description: 'Register thesis topics'
+    },
+    { 
+      title: 'Exams & Grades', 
+      icon: <School />, 
+      color: '#D4AF37', 
+      hoverColor: '#C8A732',
+      path: '/exams',
+      description: 'View exam schedule'
+    },
+    { 
+      title: 'Leave Application', 
+      icon: <Assignment />, 
+      color: '#D08B93', 
+      hoverColor: '#C47A82',
+      path: '/leaves',
+      description: 'Apply for leave'
+    },
+    { 
+      title: 'Report Grievance', 
+      icon: <Report />, 
+      color: '#D08B93', 
+      hoverColor: '#C47A82',
+      path: '/grievances',
+      description: 'Submit complaints'
+    }
   ];
 
   const handleMenuClick = (path: string) => {
@@ -126,7 +164,7 @@ const StudentDashboard: React.FC = () => {
       display: 'flex',
       flexDirection: 'column',
       minHeight: '100vh',
-      bgcolor: '#f5f5f5'
+      bgcolor: '#f7f9fc' // Slightly softer background color
     }}>
       {/* Header */}
       <Box sx={{ 
@@ -135,31 +173,38 @@ const StudentDashboard: React.FC = () => {
         alignItems: 'center',
         bgcolor: '#1A237E',
         color: 'white',
-        p: { xs: 1, md: 1.5 },
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        p: { xs: 1.5, md: 2 },
+        boxShadow: '0 3px 8px rgba(0,0,0,0.3)'
       }}>
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
           overflow: 'hidden'
         }}>
-          <img 
-            src="/logo.png" 
-            alt="Hindurao Hospital Logo" 
-            style={{ 
-              height: '40px', 
-              marginRight: '16px', 
-              display: isMobile ? 'none' : 'block' 
-            }} 
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="Hindurao Hospital Logo"
+            sx={{
+              height: { xs: '36px', md: '48px' },
+              width: 'auto',
+              mr: 2,
+              display: 'block',
+              transition: 'transform 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.05)'
+              }
+            }}
           />
           <Box sx={{ overflow: 'hidden' }}>
             <Typography 
               variant={isMobile ? "subtitle1" : "h6"} 
               sx={{ 
-                fontWeight: 'bold',
+                fontWeight: 700,
                 whiteSpace: 'nowrap',
                 textOverflow: 'ellipsis',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                letterSpacing: '0.5px'
               }}
             >
               HINDURAO HOSPITAL MEDICAL COLLEGE
@@ -168,7 +213,9 @@ const StudentDashboard: React.FC = () => {
               variant="subtitle2" 
               sx={{ 
                 display: { xs: 'none', sm: 'block' },
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                opacity: 0.9,
+                fontWeight: 400
               }}
             >
               Enterprise Resource Planning System
@@ -181,6 +228,16 @@ const StudentDashboard: React.FC = () => {
           minWidth: isMobile ? 'auto' : '300px',
           justifyContent: 'flex-end'
         }}>
+          <Tooltip 
+            title="Notifications" 
+            arrow 
+            enterDelay={700}
+            sx={{ display: { xs: 'none', sm: 'inline-flex' }, mr: 2 }}
+          >
+            <IconButton color="inherit" size="small">
+              <Notifications />
+            </IconButton>
+          </Tooltip>
           <Typography 
             variant="body2" 
             sx={{ 
@@ -200,8 +257,14 @@ const StudentDashboard: React.FC = () => {
             onClick={handleSignOut}
             sx={{ 
               bgcolor: '#f44336', 
-              '&:hover': { bgcolor: '#d32f2f' },
-              minWidth: isMobile ? '40px' : 'auto'
+              '&:hover': { 
+                bgcolor: '#d32f2f',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
+              },
+              transition: 'all 0.3s ease',
+              minWidth: isMobile ? '40px' : 'auto',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
             }}
           >
             {isMobile ? <ExitToApp /> : "Sign out"}
@@ -212,10 +275,13 @@ const StudentDashboard: React.FC = () => {
       {/* Dashboard Header */}
       <Box 
         sx={{ 
-          bgcolor: '#f0f4f8', 
-          py: 2, 
+          bgcolor: '#e8eaf6', // Slightly better contrast with main content
+          py: 2.5, 
           px: { xs: 2, md: 3 },
-          borderBottom: '1px solid #e0e0e0'
+          borderBottom: '1px solid #c5cae9',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          position: 'relative',
+          zIndex: 1
         }}
       >
         <Container maxWidth="xl">
@@ -224,7 +290,9 @@ const StudentDashboard: React.FC = () => {
             sx={{ 
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: 1.5,
+              fontWeight: 600,
+              color: '#1A237E'
             }}
           >
             <Dashboard fontSize="inherit" /> Student Dashboard
@@ -238,16 +306,16 @@ const StudentDashboard: React.FC = () => {
           {/* Left column - Student profile */}
           <Grid item xs={12} md={3}>
             <Paper 
-              elevation={2} 
+              elevation={3} 
               sx={{ 
                 height: '100%', 
                 display: 'flex', 
                 flexDirection: 'column',
                 borderRadius: 2,
                 overflow: 'hidden',
-                transition: 'box-shadow 0.3s ease-in-out',
+                transition: 'all 0.3s ease',
                 '&:hover': {
-                  boxShadow: 3
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
                 }
               }}
             >
@@ -256,89 +324,234 @@ const StudentDashboard: React.FC = () => {
                 flexDirection: 'column', 
                 alignItems: 'center', 
                 p: 3,
-                bgcolor: '#f9f9f9'
+                background: 'linear-gradient(to bottom, #e8eaf6, #f5f5f5)',
+                position: 'relative'
               }}>
+                <Box 
+                  component="img"
+                  src="/logo.png"
+                  alt="Hindurao Hospital Logo"
+                  sx={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    height: '30px',
+                    width: 'auto',
+                    opacity: 0.7
+                  }}
+                />
                 <Avatar 
                   sx={{ 
                     width: { xs: 80, sm: 100, md: 120 }, 
                     height: { xs: 80, sm: 100, md: 120 }, 
                     mb: 2,
                     border: '4px solid white',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    bgcolor: '#1A237E'
                   }} 
                 >
                   <Person sx={{ fontSize: { xs: 50, sm: 60, md: 80 } }} />
                 </Avatar>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    textAlign: 'center',
+                    color: '#1A237E'
+                  }}
+                >
                   {studentData.name}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    mb: 1,
+                    bgcolor: '#f5f5f5',
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: 1,
+                    fontFamily: 'monospace'
+                  }}
+                >
                   {studentData.id}
                 </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                <Typography 
+                  variant="body1" 
+                  sx={{ 
+                    fontWeight: 'medium',
+                    display: 'inline-block',
+                    bgcolor: '#1A237E',
+                    color: 'white',
+                    px: 2,
+                    py: 0.5,
+                    borderRadius: 1
+                  }}
+                >
                   {studentData.course}
                 </Typography>
               </Box>
               
               <Divider />
               
-              <Box sx={{ p: 2, flexGrow: 1 }}>
+              <Box sx={{ p: 2.5, flexGrow: 1 }}>
                 <TableContainer component={Box}>
                   <Table size="small">
                     <TableBody>
                       <TableRow>
-                        <TableCell component="th" scope="row" sx={{ border: 'none', py: 1, pl: 0 }}>
+                        <TableCell 
+                          component="th" 
+                          scope="row" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pl: 0,
+                            color: '#444',
+                            fontWeight: 500
+                          }}
+                        >
                           Student ID:
                         </TableCell>
-                        <TableCell align="right" sx={{ border: 'none', py: 1, pr: 0 }}>
+                        <TableCell 
+                          align="right" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pr: 0,
+                            fontWeight: 'bold',
+                            fontFamily: 'monospace',
+                            fontSize: '0.9rem'
+                          }}
+                        >
                           {studentData.studentId}
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell component="th" scope="row" sx={{ border: 'none', py: 1, pl: 0 }}>
+                        <TableCell 
+                          component="th" 
+                          scope="row" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pl: 0,
+                            color: '#444',
+                            fontWeight: 500
+                          }}
+                        >
                           CGPA:
                         </TableCell>
-                        <TableCell align="right" sx={{ border: 'none', py: 1, pr: 0 }}>
+                        <TableCell 
+                          align="right" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pr: 0,
+                            fontWeight: 'bold',
+                            color: '#1976d2'
+                          }}
+                        >
                           {studentData.cgpa}
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell component="th" scope="row" sx={{ border: 'none', py: 1, pl: 0 }}>
+                        <TableCell 
+                          component="th" 
+                          scope="row" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pl: 0,
+                            color: '#444',
+                            fontWeight: 500
+                          }}
+                        >
                           Credits:
                         </TableCell>
-                        <TableCell align="right" sx={{ border: 'none', py: 1, pr: 0 }}>
+                        <TableCell 
+                          align="right" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pr: 0,
+                            fontWeight: 'bold'
+                          }}
+                        >
                           {studentData.credits}
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell component="th" scope="row" sx={{ border: 'none', py: 1, pl: 0 }}>
+                        <TableCell 
+                          component="th" 
+                          scope="row" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pl: 0,
+                            color: '#444',
+                            fontWeight: 500
+                          }}
+                        >
                           Fee status:
                         </TableCell>
                         <TableCell 
                           align="right" 
                           sx={{ 
                             border: 'none', 
-                            py: 1, 
+                            py: 1.2, 
                             pr: 0, 
-                            color: studentData.feeStatus === 'VALID' ? 'green' : 'red',
-                            fontWeight: 'bold'
+                            color: studentData.feeStatus === 'VALID' ? '#2e7d32' : '#d32f2f',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            '&::before': {
+                              content: '""',
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              bgcolor: studentData.feeStatus === 'VALID' ? '#2e7d32' : '#d32f2f',
+                              display: 'inline-block',
+                              mr: 1
+                            }
                           }}
                         >
                           {studentData.feeStatus}
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell component="th" scope="row" sx={{ border: 'none', py: 1, pl: 0 }}>
+                        <TableCell 
+                          component="th" 
+                          scope="row" 
+                          sx={{ 
+                            border: 'none', 
+                            py: 1.2, 
+                            pl: 0,
+                            color: '#444',
+                            fontWeight: 500
+                          }}
+                        >
                           Hostel status:
                         </TableCell>
                         <TableCell 
                           align="right" 
                           sx={{ 
                             border: 'none', 
-                            py: 1, 
+                            py: 1.2, 
                             pr: 0, 
-                            color: studentData.hostelStatus === 'VALID' ? 'green' : 'red',
-                            fontWeight: 'bold'
+                            color: studentData.hostelStatus === 'VALID' ? '#2e7d32' : '#d32f2f',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            '&::before': {
+                              content: '""',
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              bgcolor: studentData.hostelStatus === 'VALID' ? '#2e7d32' : '#d32f2f',
+                              display: 'inline-block',
+                              mr: 1
+                            }
                           }}
                         >
                           {studentData.hostelStatus}
@@ -347,14 +560,6 @@ const StudentDashboard: React.FC = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-              </Box>
-
-              <Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'center', p: 2 }}>
-                <img 
-                  src="/logo.png" 
-                  alt="College Emblem" 
-                  style={{ width: '60px', opacity: 0.7 }} 
-                />
               </Box>
             </Paper>
           </Grid>
@@ -365,59 +570,120 @@ const StudentDashboard: React.FC = () => {
               {/* Dashboard menu items */}
               {menuItems.map((item, index) => (
                 <Grid item xs={6} sm={4} key={index}>
-                  <Paper 
-                    elevation={3}
-                    onClick={() => handleMenuClick(item.path)}
-                    sx={{ 
-                      p: 2, 
-                      height: { xs: '100px', sm: '120px' }, 
-                      display: 'flex', 
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: `linear-gradient(45deg, ${item.color} 0%, ${item.color}99 100%)`,
-                      color: 'white',
-                      cursor: 'pointer',
-                      borderRadius: 2,
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
-                      }
-                    }}
+                  <Tooltip
+                    title={item.description}
+                    placement="top"
+                    arrow
+                    enterDelay={700}
                   >
-                    <Box sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, mb: 1 }}>
-                      {item.icon}
-                    </Box>
-                    <Typography 
-                      variant="body1" 
-                      align="center" 
+                    <Paper 
+                      elevation={3}
+                      onClick={() => handleMenuClick(item.path)}
                       sx={{ 
-                        fontWeight: 'medium',
-                        fontSize: { xs: '0.85rem', sm: '1rem' }
+                        p: 2, 
+                        height: { xs: '100px', sm: '120px' }, 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: `linear-gradient(45deg, ${item.color} 0%, ${item.color}99 100%)`,
+                        color: 'white',
+                        cursor: 'pointer',
+                        borderRadius: 2,
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&:hover': {
+                          transform: 'translateY(-5px)',
+                          boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                          background: `linear-gradient(45deg, ${item.hoverColor} 0%, ${item.color}99 100%)`
+                        },
+                        '&::after': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0))',
+                          opacity: 0,
+                          transition: 'opacity 0.3s ease',
+                        },
+                        '&:hover::after': {
+                          opacity: 1
+                        }
                       }}
                     >
-                      {item.title}
-                    </Typography>
-                  </Paper>
+                      <Box 
+                        sx={{ 
+                          fontSize: { xs: '1.5rem', sm: '2rem' }, 
+                          mb: 1,
+                          transition: 'transform 0.3s ease',
+                          '.MuiSvgIcon-root': {
+                            filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.2))'
+                          }
+                        }}
+                      >
+                        {item.icon}
+                      </Box>
+                      <Typography 
+                        variant="body1" 
+                        align="center" 
+                        sx={{ 
+                          fontWeight: 'medium',
+                          fontSize: { xs: '0.85rem', sm: '1rem' },
+                          textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                        }}
+                      >
+                        {item.title}
+                      </Typography>
+                    </Paper>
+                  </Tooltip>
                 </Grid>
               ))}
 
               {/* Upcoming Events */}
               <Grid item xs={12}>
                 <Paper 
-                  elevation={2} 
+                  elevation={3} 
                   sx={{ 
                     p: { xs: 2, sm: 3 }, 
                     mt: 1,
                     borderRadius: 2,
-                    transition: 'box-shadow 0.3s ease-in-out',
+                    transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: 3
-                    }
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                    },
+                    position: 'relative',
+                    overflow: 'hidden'
                   }}
                 >
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box 
+                    component="img"
+                    src="/logo.png"
+                    alt="Hindurao Hospital Logo"
+                    sx={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      height: '25px',
+                      width: 'auto',
+                      opacity: 0.2
+                    }}
+                  />
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      mb: 2, 
+                      fontWeight: 'bold', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      color: '#1A237E',
+                      borderBottom: '2px solid #e8eaf6',
+                      pb: 1
+                    }}
+                  >
                     <Event color="primary" /> Upcoming Events
                   </Typography>
                   <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
@@ -426,18 +692,48 @@ const StudentDashboard: React.FC = () => {
                         <ListItem 
                           alignItems="flex-start"
                           secondaryAction={
-                            <IconButton edge="end" aria-label="view event" color="primary">
-                              <Event />
-                            </IconButton>
+                            <Tooltip title="View Details" arrow>
+                              <IconButton 
+                                edge="end" 
+                                aria-label="view event" 
+                                color="primary"
+                                sx={{ 
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    transform: 'scale(1.1)',
+                                    bgcolor: '#e3f2fd'
+                                  }
+                                }}
+                              >
+                                <Event />
+                              </IconButton>
+                            </Tooltip>
                           }
-                          sx={{ px: 0 }}
+                          sx={{ 
+                            px: 0,
+                            transition: 'background-color 0.2s',
+                            '&:hover': {
+                              bgcolor: 'rgba(0, 0, 0, 0.02)'
+                            },
+                            borderRadius: 1
+                          }}
                         >
-                          <ListItemIcon sx={{ minWidth: '40px' }}>
-                            <CalendarMonth color="secondary" />
+                          <ListItemIcon sx={{ 
+                            minWidth: '40px',
+                            color: '#7986cb',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            bgcolor: '#e8eaf6',
+                            borderRadius: '50%',
+                            width: 36,
+                            height: 36
+                          }}>
+                            <CalendarMonth fontSize="small" />
                           </ListItemIcon>
                           <ListItemText
                             primary={
-                              <Typography fontWeight="medium">
+                              <Typography fontWeight="medium" sx={{ color: '#424242' }}>
                                 {event.title}
                               </Typography>
                             }
@@ -448,17 +744,27 @@ const StudentDashboard: React.FC = () => {
                                   variant="body2"
                                   color="primary"
                                   fontWeight="bold"
+                                  sx={{ 
+                                    display: 'inline-block',
+                                    bgcolor: '#e8eaf6',
+                                    px: 1,
+                                    py: 0.25,
+                                    borderRadius: 1,
+                                    fontSize: '0.75rem',
+                                    mt: 0.5
+                                  }}
                                 >
-                                  Date: {event.date}
+                                  {event.date}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                                   {event.description}
                                 </Typography>
                               </React.Fragment>
                             }
+                            sx={{ ml: 1 }}
                           />
                         </ListItem>
-                        {index < upcomingEvents.length - 1 && <Divider component="li" />}
+                        {index < upcomingEvents.length - 1 && <Divider component="li" sx={{ my: 0.5 }} />}
                       </React.Fragment>
                     ))}
                   </List>
@@ -470,38 +776,58 @@ const StudentDashboard: React.FC = () => {
           {/* Right column - Calendar */}
           <Grid item xs={12} md={3}>
             <Card 
-              elevation={2} 
+              elevation={3} 
               sx={{ 
                 height: '100%',
                 borderRadius: 2,
                 overflow: 'hidden',
-                transition: 'box-shadow 0.3s ease-in-out',
+                transition: 'all 0.3s ease',
                 '&:hover': {
-                  boxShadow: 3
-                }
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                },
+                position: 'relative'
               }}
             >
-              <CardHeader
-                title={`${monthNames[currentMonthDisplay]} ${currentYearDisplay}`}
-                titleTypographyProps={{ 
-                  align: 'center', 
-                  variant: 'h6',
-                  fontWeight: 'bold'
-                }}
-                sx={{ 
-                  bgcolor: '#1A237E',
-                  color: 'white',
-                  py: 1.5 
+              <Box 
+                component="img"
+                src="/logo.png"
+                alt="Hindurao Hospital Logo"
+                sx={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  height: '25px',
+                  width: 'auto',
+                  opacity: 0.3,
+                  zIndex: 1
                 }}
               />
-              <CardContent>
-                <Grid container spacing={0}>
+              <CardHeader
+                avatar={<CalendarMonth color="primary" />}
+                title={`${monthNames[currentMonthDisplay]} ${currentYearDisplay}`}
+                titleTypographyProps={{ 
+                  variant: 'h6',
+                  fontWeight: 'bold',
+                  color: '#1A237E'
+                }}
+                sx={{ 
+                  bgcolor: '#e8eaf6',
+                  py: 1.5,
+                  borderBottom: '1px solid rgba(0,0,0,0.08)'
+                }}
+              />
+              <CardContent sx={{ p: 2 }}>
+                <Grid container spacing={0.5}>
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                     <Grid item xs={12/7} key={day}>
                       <Typography 
-                        variant="subtitle2" 
+                        variant="caption" 
                         align="center" 
-                        sx={{ fontWeight: 'bold', mb: 1 }}
+                        sx={{ 
+                          fontWeight: 'bold', 
+                          display: 'block',
+                          color: day === 'Sun' ? '#d32f2f' : '#546e7a'
+                        }}
                       >
                         {day}
                       </Typography>
@@ -510,29 +836,58 @@ const StudentDashboard: React.FC = () => {
                   
                   {calendarGrid.map((week, weekIndex) => (
                     <React.Fragment key={weekIndex}>
-                      {week.map((day, dayIndex) => (
-                        <Grid item xs={12/7} key={`${weekIndex}-${dayIndex}`}>
-                          <Box 
-                            sx={{ 
-                              height: '36px', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              border: '1px solid #f0f0f0',
-                              borderRadius: '4px',
-                              m: 0.2,
-                              bgcolor: day === currentDate.getDate() ? '#e3f2fd' : 'transparent',
-                              fontWeight: day === currentDate.getDate() ? 'bold' : 'normal',
-                              color: day === currentDate.getDate() ? '#1A237E' : 'inherit',
-                              '&:hover': {
-                                bgcolor: '#f5f5f5'
-                              }
-                            }}
-                          >
-                            {day !== null ? day : ''}
-                          </Box>
-                        </Grid>
-                      ))}
+                      {week.map((day, dayIndex) => {
+                        const isToday = day === currentDate.getDate() && 
+                                       currentMonthDisplay === currentDate.getMonth() && 
+                                       currentYearDisplay === currentDate.getFullYear();
+                        const isWeekend = dayIndex === 0 || dayIndex === 6;
+                        return (
+                          <Grid item xs={12/7} key={`${weekIndex}-${dayIndex}`}>
+                            <Box 
+                              sx={{ 
+                                height: { xs: '32px', sm: '36px' }, 
+                                width: '100%',
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                border: isToday ? '2px solid #1A237E' : '1px solid #f0f0f0',
+                                borderRadius: '4px',
+                                m: '2px',
+                                position: 'relative',
+                                fontWeight: isToday ? 'bold' : 'normal',
+                                bgcolor: isToday ? '#e3f2fd' : 'transparent',
+                                color: isWeekend && day !== null ? '#d32f2f' : isToday ? '#1A237E' : 'inherit',
+                                transition: 'all 0.2s ease',
+                                cursor: day !== null ? 'pointer' : 'default',
+                                '&:hover': day !== null ? {
+                                  bgcolor: isToday ? '#bbdefb' : '#f5f5f5',
+                                  transform: 'scale(1.05)',
+                                  zIndex: 1
+                                } : {},
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {day !== null && (
+                                <Typography variant="body2">
+                                  {day}
+                                </Typography>
+                              )}
+                              {isToday && (
+                                <Box 
+                                  sx={{
+                                    position: 'absolute',
+                                    bottom: '2px',
+                                    height: '3px',
+                                    width: '60%',
+                                    bgcolor: '#1A237E',
+                                    borderRadius: '2px'
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Grid>
+                        );
+                      })}
                     </React.Fragment>
                   ))}
                 </Grid>
