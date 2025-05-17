@@ -1,9 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from './User';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from "typeorm"; // Added OneToMany
+import { User } from "./User";
+import { Exam } from "./Exam"; // Import the Exam entity
 
-@Entity('faculty')
+@Entity("faculty")
 export class Faculty {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Column({ unique: true, nullable: false })
@@ -13,7 +23,7 @@ export class Faculty {
   department: string;
 
   @Column({ nullable: false })
-  designation: string;  // Professor, Associate Professor, Assistant Professor, etc.
+  designation: string; // Professor, Associate Professor, Assistant Professor, etc.
 
   @Column({ nullable: false })
   specialization: string;
@@ -21,19 +31,21 @@ export class Faculty {
   @Column({ nullable: true })
   qualifications: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: "date", nullable: true })
   joiningDate: Date;
 
   @Column({ nullable: true })
-  experience: number;  // in years
+  experience: number; // in years
 
   @ManyToOne(() => User, { eager: true })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: "userId" })
   user: User;
 
   @Column()
   userId: string;
 
+  @OneToMany(() => Exam, (exam) => exam.facultyInCharge)
+  exams: Exam[];
   @CreateDateColumn()
   createdAt: Date;
 

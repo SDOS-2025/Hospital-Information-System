@@ -1,9 +1,10 @@
-import { Repository } from 'typeorm';
-import { AppDataSource } from '../db/data-source';
-import { Faculty } from '../models/Faculty';
-import { User } from '../models/User';
-import { UserRole } from '../types/auth.types';
-import { sendWelcomeEmail } from '../utils/email.util';
+import { Repository } from "typeorm";
+import { AppDataSource } from "../db/data-source";
+import { Faculty } from "../models/Faculty";
+import { User } from "../models/User";
+import { UserRole } from "../types/auth.types";
+import { sendWelcomeEmail } from "../utils/email.util";
+import { Exam } from "../models/Exam";
 
 export class FacultyService {
   private facultyRepository: Repository<Faculty>;
@@ -43,16 +44,16 @@ export class FacultyService {
       qualifications,
       joiningDate,
       experience,
-      contactNumber
+      contactNumber,
     } = facultyData;
 
     // Check if employee ID already exists
     const existingFaculty = await this.facultyRepository.findOne({
-      where: { employeeId }
+      where: { employeeId },
     });
 
     if (existingFaculty) {
-      throw new Error('Faculty with this employee ID already exists');
+      throw new Error("Faculty with this employee ID already exists");
     }
 
     // Create user account
@@ -63,7 +64,7 @@ export class FacultyService {
       password,
       role: UserRole.FACULTY,
       contactNumber,
-      isActive: true
+      isActive: true,
     });
 
     await this.userRepository.save(user);
@@ -77,7 +78,7 @@ export class FacultyService {
       qualifications,
       joiningDate: joiningDate || new Date(),
       experience,
-      userId: user.id
+      userId: user.id,
     });
 
     await this.facultyRepository.save(faculty);
@@ -86,7 +87,7 @@ export class FacultyService {
     await sendWelcomeEmail(
       `${user.firstName} ${user.lastName}`,
       user.email,
-      'Faculty'
+      "Faculty"
     );
 
     return this.getFacultyById(faculty.id);
@@ -100,18 +101,25 @@ export class FacultyService {
     designation?: string;
     specialization?: string;
   }): Promise<Faculty[]> {
-    const query = this.facultyRepository.createQueryBuilder('faculty')
-      .leftJoinAndSelect('faculty.user', 'user');
+    const query = this.facultyRepository
+      .createQueryBuilder("faculty")
+      .leftJoinAndSelect("faculty.user", "user");
 
     if (filters) {
       if (filters.department) {
-        query.andWhere('faculty.department = :department', { department: filters.department });
+        query.andWhere("faculty.department = :department", {
+          department: filters.department,
+        });
       }
       if (filters.designation) {
-        query.andWhere('faculty.designation = :designation', { designation: filters.designation });
+        query.andWhere("faculty.designation = :designation", {
+          designation: filters.designation,
+        });
       }
       if (filters.specialization) {
-        query.andWhere('faculty.specialization = :specialization', { specialization: filters.specialization });
+        query.andWhere("faculty.specialization = :specialization", {
+          specialization: filters.specialization,
+        });
       }
     }
 
@@ -124,11 +132,11 @@ export class FacultyService {
   async getFacultyById(id: string): Promise<Faculty> {
     const faculty = await this.facultyRepository.findOne({
       where: { id },
-      relations: ['user']
+      relations: ["user"],
     });
 
     if (!faculty) {
-      throw new Error('Faculty not found');
+      throw new Error("Faculty not found");
     }
 
     return faculty;
@@ -140,11 +148,11 @@ export class FacultyService {
   async getFacultyByEmployeeId(employeeId: string): Promise<Faculty> {
     const faculty = await this.facultyRepository.findOne({
       where: { employeeId },
-      relations: ['user']
+      relations: ["user"],
     });
 
     if (!faculty) {
-      throw new Error('Faculty not found');
+      throw new Error("Faculty not found");
     }
 
     return faculty;
@@ -153,24 +161,27 @@ export class FacultyService {
   /**
    * Update faculty information
    */
-  async updateFaculty(id: string, updateData: {
-    department?: string;
-    designation?: string;
-    specialization?: string;
-    qualifications?: string;
-    experience?: number;
-    firstName?: string;
-    lastName?: string;
-    contactNumber?: string;
-    profilePicture?: string;
-  }): Promise<Faculty> {
+  async updateFaculty(
+    id: string,
+    updateData: {
+      department?: string;
+      designation?: string;
+      specialization?: string;
+      qualifications?: string;
+      experience?: number;
+      firstName?: string;
+      lastName?: string;
+      contactNumber?: string;
+      profilePicture?: string;
+    }
+  ): Promise<Faculty> {
     const faculty = await this.facultyRepository.findOne({
       where: { id },
-      relations: ['user']
+      relations: ["user"],
     });
 
     if (!faculty) {
-      throw new Error('Faculty not found');
+      throw new Error("Faculty not found");
     }
 
     // Extract user data and faculty data
@@ -207,11 +218,11 @@ export class FacultyService {
    */
   async deleteFaculty(id: string): Promise<void> {
     const faculty = await this.facultyRepository.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!faculty) {
-      throw new Error('Faculty not found');
+      throw new Error("Faculty not found");
     }
 
     // First delete faculty
@@ -230,11 +241,11 @@ export class FacultyService {
   async getFacultyTeachingLoad(facultyId: string): Promise<number> {
     const faculty = await this.facultyRepository.findOne({
       where: { id: facultyId },
-      relations: ['exams']
+      relations: ["exams"],
     });
 
     if (!faculty) {
-      throw new Error('Faculty not found');
+      throw new Error("Faculty not found");
     }
 
     // Calculate teaching load based on assigned exams
