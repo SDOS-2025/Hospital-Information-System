@@ -14,6 +14,10 @@ export const seedDatabase = async () => {
       console.log('Database connection initialized');
     }
 
+    // Synchronize schema to create missing tables
+    await AppDataSource.synchronize();
+    console.log('Database schema synchronized');
+
     // Create repositories
     const userRepository = AppDataSource.getRepository(User);
 
