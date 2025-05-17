@@ -68,44 +68,82 @@ class App {
   }
 
   private setupRedis(): void {
-    // Check if Redis is explicitly disabled
     if (process.env.REDIS_ENABLED === "false") {
       console.log("Redis is disabled by configuration");
       return;
     }
 
+    const redisUrl = process.env.REDIS_URL;
+
+    if (!redisUrl) {
+      console.warn(
+        "REDIS_URL is not defined in environment variables. Application will continue without Redis."
+      );
+      // Just skip Redis if REDIS_URL isn't set.
+      return;
+    }
+
     try {
-      const redis = new Redis({
-        host: process.env.REDIS_HOST || "localhost",
-        port: Number(process.env.REDIS_PORT) || 6379,
+      console.log(
+        `Attempting to connect to Redis at: ${redisUrl.replace(
+          /:[^@:]*@/,
+          ":<password_hidden>@"
+        )}`
+      ); // Log URL but hide password
+
+      const redisInstance = new Redis(redisUrl, {
+        // Pass the URL directly
         maxRetriesPerRequest: 1,
-        lazyConnect: true, // Don't connect immediately
-        retryStrategy: () => null, // Disable retries completely
+        lazyConnect: true,
+        retryStrategy: (times) => {
+          if (times > 3) {
+            // Try 3 times then give up, free tier limitation
+            return null;
+          }
+          return Math.min(times * 200, 2000); // Exponential backoff
+        },
+        // Recommended for Upstash or cloud providers with TLS
+        tls:
+          redisUrl.startsWith("rediss://") || redisUrl.includes("upstash.io")
+            ? {}
+            : undefined,
       });
 
-      // Handle connection events
-      redis.on("error", (error) => {
-        console.warn("Redis connection error:", error);
-        if (!this.redis) {
-          // Only log this message on initial connection failure
-          console.log("Application will continue without Redis");
+      redisInstance.on("connect", () => {
+        console.log("Redis connection established successfully.");
+        this.redis = redisInstance;
+      });
+
+      redisInstance.on("error", (error: Error) => {
+        console.error("Redis connection error:", error.message);
+        // If it fails to connect initially, this.redis might not be set yet.
+        if (this.redis === redisInstance) {
+          // Check if it's the same instance
+          this.redis = undefined; // Clear the instance if connection is lost after being established
         }
-        // Clean up the failed connection
-        redis.disconnect();
+        console.log(
+          "Application will continue without Redis functionality due to connection error."
+        );
+        redisInstance.disconnect(); // Ensure we clean up the failed connection attempt
       });
 
-      redis.on("connect", () => {
-        console.log("Redis connection established");
-        this.redis = redis;
+      redisInstance.on("ready", () => {
+        console.log("Redis client is ready.");
       });
 
-      // Attempt to connect
-      redis.connect().catch(() => {
-        // Connection error is already handled by the error event
+      // Attempt to connect (lazyConnect means it won't connect until the first command or .connect() is called)
+      redisInstance.connect().catch((err) => {
+        // Error handling is already done by the 'error' event listener,
+        // but you can log an initial connection failure specifically here if needed.
+        console.error("Initial Redis connect() promise rejected:", err.message);
       });
     } catch (error) {
-      console.warn("Failed to initialize Redis:", error);
-      console.log("Application will continue without Redis");
+      const e = error as Error;
+      console.warn(
+        "Failed to initialize Redis client due to an exception:",
+        e.message
+      );
+      console.log("Application will continue without Redis.");
     }
   }
 
