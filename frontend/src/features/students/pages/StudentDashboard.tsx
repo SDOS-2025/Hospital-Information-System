@@ -817,80 +817,50 @@ const StudentDashboard: React.FC = () => {
                 }}
               />
               <CardContent sx={{ p: 2 }}>
-                <Grid container spacing={0.5}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
+                  {/* Weekday headers */}
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <Grid item xs={12/7} key={day}>
-                      <Typography 
-                        variant="caption" 
-                        align="center" 
-                        sx={{ 
-                          fontWeight: 'bold', 
-                          display: 'block',
-                          color: day === 'Sun' ? '#d32f2f' : '#546e7a'
-                        }}
-                      >
-                        {day}
-                      </Typography>
-                    </Grid>
+                    <Typography 
+                      key={day}
+                      variant="caption" 
+                      align="center" 
+                      sx={{ fontWeight: 'bold', color: day === 'Sun' ? 'error.main' : 'text.secondary' }}
+                    >
+                      {day}
+                    </Typography>
                   ))}
-                  
-                  {calendarGrid.map((week, weekIndex) => (
-                    <React.Fragment key={weekIndex}>
-                      {week.map((day, dayIndex) => {
-                        const isToday = day === currentDate.getDate() && 
-                                       currentMonthDisplay === currentDate.getMonth() && 
-                                       currentYearDisplay === currentDate.getFullYear();
-                        const isWeekend = dayIndex === 0 || dayIndex === 6;
-                        return (
-                          <Grid item xs={12/7} key={`${weekIndex}-${dayIndex}`}>
-                            <Box 
-                              sx={{ 
-                                height: { xs: '32px', sm: '36px' }, 
-                                width: '100%',
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                border: isToday ? '2px solid #1A237E' : '1px solid #f0f0f0',
-                                borderRadius: '4px',
-                                m: '2px',
-                                position: 'relative',
-                                fontWeight: isToday ? 'bold' : 'normal',
-                                bgcolor: isToday ? '#e3f2fd' : 'transparent',
-                                color: isWeekend && day !== null ? '#d32f2f' : isToday ? '#1A237E' : 'inherit',
-                                transition: 'all 0.2s ease',
-                                cursor: day !== null ? 'pointer' : 'default',
-                                '&:hover': day !== null ? {
-                                  bgcolor: isToday ? '#bbdefb' : '#f5f5f5',
-                                  transform: 'scale(1.05)',
-                                  zIndex: 1
-                                } : {},
-                                overflow: 'hidden'
-                              }}
-                            >
-                              {day !== null && (
-                                <Typography variant="body2">
-                                  {day}
-                                </Typography>
-                              )}
-                              {isToday && (
-                                <Box 
-                                  sx={{
-                                    position: 'absolute',
-                                    bottom: '2px',
-                                    height: '3px',
-                                    width: '60%',
-                                    bgcolor: '#1A237E',
-                                    borderRadius: '2px'
-                                  }}
-                                />
-                              )}
-                            </Box>
-                          </Grid>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))}
-                </Grid>
+                  {/* Calendar days */}
+                  {calendarGrid.flatMap((week, wi) => 
+                    week.map((day, di) => {
+                      const isToday = day === currentDate.getDate() && 
+                                      currentMonthDisplay === currentDate.getMonth() && 
+                                      currentYearDisplay === currentDate.getFullYear();
+                      const isWeekend = di === 0 || di === 6;
+                      return (
+                        <Box 
+                          key={`${wi}-${di}`} 
+                          sx={{
+                            height: { xs: 32, sm: 36 },
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: isToday ? `2px solid ${theme.palette.primary.main}` : '1px solid',
+                            borderColor: isToday ? 'primary.main' : 'divider',
+                            borderRadius: 1,
+                            bgcolor: isToday ? 'action.selected' : 'transparent',
+                            color: isWeekend && day ? 'error.main' : isToday ? 'primary.main' : 'inherit',
+                            fontWeight: isToday ? 'bold' : 'normal',
+                            transition: 'all 0.2s ease',
+                            cursor: day ? 'pointer' : 'default',
+                            '&:hover': day ? { bgcolor: isToday ? 'action.hover' : 'grey.100', transform: 'scale(1.05)', zIndex: 1 } : {},
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {day && <Typography variant="body2">{day}</Typography>}
+                          {isToday && <Box sx={{ position: 'absolute', bottom: 2, height: 3, width: '60%', bgcolor: 'primary.main', borderRadius: 1 }} />} 
+                        </Box>
+                      );
+                    })
+                  )}
+                </Box>
               </CardContent>
             </Card>
           </Grid>

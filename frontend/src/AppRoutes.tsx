@@ -2,6 +2,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 import { LoginScreen } from './features/auth/LoginScreen';
 import StudentDashboard from './features/students/pages/StudentDashboard';
+import { FeeStatus } from './features/fees/pages/FeeStatus';
+import { Thesis } from './features/thesis/pages/Thesis';
+import { Exams } from './features/exams/pages/Exams';
 // Import other feature pages as needed
 
 // Private route component for protected routes
@@ -24,12 +27,12 @@ const AppRoutes: React.FC = () => {
         <Route path="students" element={<div>Students Content</div>} />
         {/* Add more routes for other features */}
         <Route path="admissions" element={<div>Admissions Content</div>} />
-        <Route path="exams" element={<div>Exams Content</div>} />
+        <Route path="exams/*" element={<Exams />} />
         <Route path="faculty" element={<div>Faculty Content</div>} />
-        <Route path="fees" element={<div>Fees Content</div>} />
+        <Route path="fees" element={<FeeStatus />} />
         <Route path="grievances" element={<div>Grievances Content</div>} />
         <Route path="leaves" element={<div>Leaves Content</div>} />
-        <Route path="thesis" element={<div>Thesis Content</div>} />
+        <Route path="thesis/*" element={<Thesis />} />
       </Route>
       
       {/* Fallback route */}

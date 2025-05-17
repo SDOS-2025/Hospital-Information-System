@@ -37,12 +37,39 @@ export interface Admission extends BaseEntity {
   documents: string[];
 }
 
+export enum ExamType {
+  INTERNAL = 'internal',
+  MIDTERM = 'midterm',
+  FAT = 'fat',
+  PRACTICAL = 'practical',
+  VIVA = 'viva'
+}
+
+export enum ExamStatus {
+  SCHEDULED = 'scheduled',
+  ONGOING = 'ongoing',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  POSTPONED = 'postponed'
+}
+
 export interface Exam extends BaseEntity {
-  course: string;
-  date: Date;
-  duration: number;
-  type: string;
-  faculty: Faculty;
+  title: string;
+  courseCode: string;
+  semester: number;
+  type: ExamType;
+  startTime: Date;
+  endTime: Date;
+  venue: string;
+  maxMarks?: number;
+  passingMarks?: number;
+  status: ExamStatus;
+  instructions?: string;
+  facultyInCharge: Faculty;
+  facultyInChargeId: string;
+  proctors?: string[];
+  attachments?: string[];
+  remarks?: string;
 }
 
 export interface Fee extends BaseEntity {
